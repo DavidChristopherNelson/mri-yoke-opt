@@ -9,3 +9,6 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 results/
+.venv/
+results/*.vtu
+results/*.log

@@ -1,9 +1,26 @@
-# mri-yoke-topopt
+# mri-yoke-opt
 
 Topology optimization of the iron yoke for a low-field (159 mT) H-frame permanent-magnet MRI scanner.
 3D from day one. NGSolve primary. Gradient-based (level-set + topological derivative), no stochastic steps.
 
-Status: plan only. No code yet.
+Status: coarse-mesh pipeline runs end to end on a laptop. Placeholders in `mriyoke/config.py` (DSV 200 mm, 300×300×50 mm N42 magnets, 300 mm gap, $2/kg iron) need real values.
+
+## Run
+
+```
+python3 -m venv .venv && .venv/bin/pip install ngsolve numpy scipy scikit-image matplotlib
+.venv/bin/python scripts/run_coarse.py iter_max=60 results_dir=results/coarse   # any Config field overridable as key=value
+```
+
+Outputs per iteration in `results/<run>/`:
+
+| file | view with |
+|---|---|
+| `viewer.html` | any browser: 3D iron surface (mirrored to full magnet), magnets, DSV; slider/play over all iterations, stats per frame |
+| `iter_XXXX.png` | y=0 slice: \|B\| map and iron fraction |
+| `iter_XXXX.vtu` | ParaView: psi, iron fraction, B vector, \|B\| on the 1/8 mesh (use Reflect filter for full) |
+| `history.png`, `history.csv` | ppm, mean B, iron kg, J, w per iteration |
+| `run.log` | line-search trace |
 
 ## Problem
 
@@ -36,14 +53,18 @@ Where an NGSolve default clashes with the original brief, the default wins. Devi
 
 Stochastic/annealing steps · bucking magnets · laminations/anisotropy · manufacturability/connectivity constraint · 2D or axisymmetric models · looping over imaging volumes / pole geometries · cloud compute.
 
-## Layout (planned)
+## Layout
 
 ```
-geometry/    OCC H-frame, magnets, imaging volume, air box, symmetry BCs
-physics/     A-formulation, B-H curve, Newton solve
-topopt/      level set, cut-ratio, topological derivative, line search, stopping
-eval/        surface sampling, mean / ppm metrics, VTK export
-scripts/     run_coarse.py (laptop debug), run_production.py (later)
+mriyoke/config.py       all parameters (dataclass)
+mriyoke/geometry.py     OCC 1/8 octant: air, design box, clearance shell, DSV, magnet; symmetry face names
+mriyoke/physics.py      HCurl A-formulation, Brauer nu(|B|), damped Newton, CG+BDDC, adjoint solve
+mriyoke/levelset.py     psi (H1 order 1), exact tet cut-ratio, initial H-frame guess, update/line-search helpers
+mriyoke/sensitivity.py  adjoint gradient of field misfit and iron cost w.r.t. per-element iron fraction
+mriyoke/metrics.py      DSV-surface mean / (max-min)/mean, iron mass and cost
+mriyoke/export.py       VTK, slice PNG, marching-cubes frames + self-contained three.js viewer
+mriyoke/optimize.py     main loop (tutorial 7.6 fixed-point + line search, adaptive penalty)
+scripts/run_coarse.py   entry point;  scripts/test_forward.py, test_newton.py: stage checks
 ```
 
 See `PLAN.md` for details and decisions.

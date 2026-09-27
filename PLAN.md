@@ -71,10 +71,18 @@ Coarse laptop mesh (~100k elements, order 2) for all development. Production (fe
 | (max−min)/mean as objective | least-squares surface misfit as objective, (max−min)/mean checked post-hoc | non-smooth metric unusable for gradients |
 | Firedrake + pyadjoint | NGSolve | user choice |
 
+## 8b. Implementation notes (2026-09-27, what was actually built)
+
+- Objective uses the *volume* misfit ∫_dsv(|B|−B₀)² dx (smooth, cheap with HCurl); the surface (max−min)/mean is computed post-hoc from ~600 points on the DSV octant surface. Equivalent for a source-free sphere.
+- Sensitivity is the exact discrete gradient of the cut-ratio-interpolated problem (adjoint with the Newton Jacobian), used directly as the level-set update direction g; the polarization-tensor TD scaling was dropped (Gangl–Sturm 2022 unified discrete sensitivity). Cost gradient = vol_e/V_design.
+- Constraints via adaptive penalty: J = w·f + c, w×1.5 while violated (capped 1e8), w/1.2 when satisfied.
+- Iron B-H: Brauer ν(|B|)=k1·exp(k2|B|²)+k3, k=(49.4, 1.46, 520.6) (μr≈1400 initial), clamped below ν0. Swap for a 1010 table later.
+- Linear solver: CG + BDDC (tutorial 2.4); direct sparsecholesky also works. Newton residual is projected onto free dofs (otherwise Dirichlet-dof residual masks convergence).
+- Coarse mesh (~20k tets, order 2, ~100k dofs): discretization error ~1e4 ppm, so the 400 ppm target is NOT resolvable on this mesh. Coarse runs validate the pipeline and the topology trend only.
+
 ## 9. Open questions
 
-1. Imaging volume: sphere or ovaloid for first run, and dimensions?
-2. Pole magnet: material grade, dimensions, gap?
-3. Iron $/kg to use for the cost weight?
-4. Repo license (none added yet)?
-5. Air-box size / far-field treatment acceptable as above?
+1. DSV diameter (placeholder 200 mm)?
+2. Pole magnet: grade, x/y/thickness, gap (placeholders N42, 300×300×50 mm, 300 mm)?
+3. Iron $/kg (placeholder 2)?
+4. Air-box size / far-field treatment acceptable (1 m octant)?
