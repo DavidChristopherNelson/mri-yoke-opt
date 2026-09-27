@@ -8,7 +8,6 @@ __pycache__/
 *.npz
 .ipynb_checkpoints/
 .DS_Store
-results/
 .venv/
 results/*.vtu
 results/*.log
