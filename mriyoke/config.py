@@ -35,7 +35,7 @@ class Config:
     mu_r_f: float = 1.05
     ferrite_density: float = 4900.0   # kg/m^3
     ferrite_cost_per_kg: float = 3.0  # PLACEHOLDER $/kg
-    C_fixed: float = 15000.0          # PLACEHOLDER fixed cost of the scanner [$]
+    C_fixed: float = 2000.0           # fixed cost of the scanner [$]
     Hcj_cold: float = 250e3           # intrinsic coercivity at the coldest operating temperature [A/m]
     demag_frac: float = 0.8           # demagnetisation gate: H.m >= -demag_frac * Hcj_cold
     demag_weight: float = 10.0        # weight of the quadratic demagnetisation penalty
@@ -86,8 +86,8 @@ class Config:
     ell_seed: float = 0.040           #   correlation length of the Gaussian blur [m]
     seed_iron_frac: float = 0.20      #   iron volume fraction of the design box
     seed_ferrite_frac: float = 0.10   #   ferrite volume fraction (ferrite wins overlaps)
-    mass_step_frac_fe: float = 0.01   # per step, iron added + iron removed <= this fraction of iron_ref_kg
-    mass_step_frac_f: float = 0.01    # same for ferrite, fraction of ferrite_ref_kg
+    mass_step_frac_fe: float = 0.05   # per step, iron added + iron removed <= this fraction of iron_ref_kg
+    mass_step_frac_f: float = 0.05    # same for ferrite, fraction of ferrite_ref_kg
     iron_ref_kg: float = 300.0        # PLACEHOLDER reference masses for the step caps (~ expected mass, full magnet)
     ferrite_ref_kg: float = 200.0     # PLACEHOLDER
     harm_order: int = 8               # |B| in the envelope is projected on the even harmonic polynomials up to this degree

@@ -7,7 +7,7 @@ Topology optimization of a low-field (159.2 mT) permanent-magnet MRI magnet: whe
 
     F = (C_fe + C_f + C_fixed) / N_green.
 
-Status: pipeline runs end to end on the coarse laptop mesh; gradients verified against finite differences. On that mesh the FE noise (1–3 mT) is larger than the field band (±0.15 mT), so coarse runs validate the pipeline, not the design. Placeholders in `mriyoke/config.py` (envelope 400×400×300 mm, costs, reference masses) need real values.
+Status: pipeline runs end to end on the coarse laptop mesh; gradients verified against finite differences. On that mesh the FE noise (1–3 mT) is larger than the field band (±0.15 mT), so coarse runs validate the pipeline, not the design. Placeholders in `mriyoke/config.py` (envelope 400×400×300 mm, $/kg, reference masses) need real values.
 
 ## Run
 
@@ -71,7 +71,7 @@ dB_band = min(ism_fraction × 0.70 mT, 2 δ dx_img G_max) comes from hardware (I
 
 Start designs: `init=hframe:thin|medium|thick` (iron back plate + post, ferrite slab of 30 / 50 / 80 mm) or `init=noise:<seed>` (blurred noise, 20 % iron and 10 % ferrite).
 
-Each accepted step moves (adds + removes) at most 1 % of a reference mass per material: `mass_step_frac_fe` × `iron_ref_kg` (3 kg) and `mass_step_frac_f` × `ferrite_ref_kg` (2 kg). Dense noise seeds (~900 kg iron, ~270 kg ferrite) shed mass slowly under these caps: hundreds of iterations before they get near the band. Raise the fractions for such runs if that is too slow.
+Each accepted step moves (adds + removes) at most 5 % of a reference mass per material: `mass_step_frac_fe` × `iron_ref_kg` (15 kg) and `mass_step_frac_f` × `ferrite_ref_kg` (10 kg); the caps are Config fields (1 % in the original brief, raised 2026-10-05 because the field then gained only ~1 mT per iteration). Dense noise seeds (~900 kg iron, ~270 kg ferrite) shed mass slowly even so: on the order of a hundred iterations or more before they get near the band (~700 at 1 %).
 
 ## Method (NGSolve default patterns)
 

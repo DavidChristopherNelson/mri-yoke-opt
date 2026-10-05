@@ -131,9 +131,9 @@ Sections 1–8 describe the earlier formulation (fixed NdFeB pole magnets, DSV s
 - Material law (geometric mix): ν = ν0^(1−cr−cr_f) · ν_iron(B)^cr · (ν0/μr_f)^cr_f. Source everywhere in the design domain: M = cr_f · p · (Br_f/μ0)/μr_f · e_z. Ferrite: Br_f = 0.40 T, μr_f = 1.05, 4900 kg/m³.
 - Sensitivities for any functional (K λ = ∂J/∂A): dJ/dcr_e = −∫_e ∂ν/∂cr curlA·curlλ; dJ/dcr_f,e = −∫_e ∂ν/∂cr_f curlA·curlλ + p (Br_f/μ0)/μr_f ∫_e e_z·curlλ. Checked against finite differences (`scripts/test_gradient.py`).
 - Polarity: dJ/dp_e = cr_f,e M_f ∫_e e_z·curlλ, so the polarity that lowers J is p_e = −sign(∫_e e_z·curlλ_J) (λ_J the adjoint of the minimised J; the brief's "sign(...)" with the sign convention made explicit). **Deviation**: it is applied every iteration only to elements that hold no ferrite yet, so new ferrite nucleates with the best polarity. Flipping existing ferrite is a finite jump outside the line search (near the band every element would flip whenever the field overshoots); existing ferrite changes polarity by being removed and regrown. Noise seeds set all polarities once from one forward + adjoint solve.
-- Step caps per accepted iteration: iron moved (added + removed) ≤ `mass_step_frac_fe` × `iron_ref_kg`, ferrite moved ≤ `mass_step_frac_f` × `ferrite_ref_kg` (1 % × 300 kg, 1 % × 200 kg; reference masses are placeholders). Each level set gets its own cap on κ, so a tight cap on one material does not slow the other; the mean-field correction is scaled to respect both.
+- Step caps per accepted iteration: iron moved (added + removed) ≤ `mass_step_frac_fe` × `iron_ref_kg`, ferrite moved ≤ `mass_step_frac_f` × `ferrite_ref_kg` (5 % × 300 kg = 15 kg, 5 % × 200 kg = 10 kg since 2026-10-05, 1 % before; reference masses are placeholders). Each level set gets its own cap on κ, so a tight cap on one material does not slow the other; the mean-field correction is scaled to respect both.
 - Demagnetisation gate: per ferrite element h = H·(p e_z) = (ν0/μr_f) p B_z − M_f; reported `demag_frac` = ferrite volume fraction with h < −0.8 Hcj(T_cold) (250 kA/m default); quadratic penalty `demag_weight` × Σ cr_f vol ((−0.8 Hcj − h)/Hcj)²₊ / V_ref added to the objective.
-- Cost in dollars for the full magnet: C = C_fe + C_f + C_fixed (placeholders: iron $2/kg, ferrite $3/kg, C_fixed $15000).
+- Cost in dollars for the full magnet: C = C_fe + C_f + C_fixed (C_fixed $2000; placeholders: iron $2/kg, ferrite $3/kg).
 
 ### 10.2 Objective
 
@@ -158,7 +158,7 @@ minimise F = (C_fe + C_f + C_fixed) / N_green
 - `init=noise:<seed>`: two white-noise fields on a grid of pitch `h_seed` (10 mm), Gaussian-blurred with correlation length `ell_seed` (40 mm), thresholded at the quantiles that give 20 % iron and 10 % ferrite of the design volume. Deterministic given the seed; no randomness inside the loop.
 - `init=hframe:thin|medium|thick`: iron back plate + post, ferrite slab 30 / 50 / 80 mm at the old magnet position.
 - `scripts/multistart.py`: N noise seeds + 3 H-frame seeds through `session.py`, then `summary.csv` and IoU matrices of the final iron and ferrite masks.
-- With 20 % iron a noise seed starts at ~1000 kg; under the 1 % cap (3 kg per step) it sheds mass slowly.
+- With 20 % iron a noise seed starts at ~1000 kg; it sheds mass slowly even at the 5 % cap (15 kg per step; ~700 iterations to the band at 1 %).
 
 ### 10.5 Deviations from the Plan X brief and things found while building it
 
@@ -191,7 +191,7 @@ Coarse mesh: FE noise in |B| is ~1–3 mT in the projection sphere against a ±0
 ### 10.7 Open questions (Plan X)
 
 1. Envelope size (placeholder 400 × 400 × 300 mm)?
-2. Costs: ferrite $/kg, iron $/kg, C_fixed?
-3. Reference masses for the 1 % caps (300 kg iron, 200 kg ferrite)?
+2. Costs: ferrite $/kg, iron $/kg? (C_fixed = $2000 set 2026-10-05)
+3. Reference masses for the step caps (300 kg iron, 200 kg ferrite)?
 4. K0 definition for the precheck?
 5. Projection sphere radius (100 mm) acceptable, or mesh the envelope so finely near the sources that a box projection is not needed?
