@@ -1,0 +1,30 @@
+=== run 2026-10-05 20:06:12  Config(B0=0.159, mean_tol=0.001, ppm_max=400.0, dsv_radius=0.1, clearance=0.02, env_x=0.4, env_y=0.4, env_z=0.3, Br_f=0.4, mu_r_f=1.05, ferrite_density=4900.0, ferrite_cost_per_kg=3.0, C_fixed=15000.0, Hcj_cold=250000.0, demag_frac=0.8, demag_weight=10.0, design_L=0.45, air_L=1.0, k1=49.4, k2=1.46, k3=520.6, iron_density=7850.0, iron_cost_per_kg=2.0, maxh_air=0.12, maxh_design=0.035, maxh_dsv=0.025, fe_order=2, newton_maxit=25, newton_tol=1e-08, reg_eps=1e-08, linear_solver='bddc', verbose_newton=False, iter_max=8, kappa0=0.1, kappa_max=1.0, kappa_min=0.001, kappa_up=1.5, kappa_down=0.6, ls_max_tries=10, ls_refine_gain=0.05, dJ_rel_tol=0.0001, dJ_rel_count=5, time_budget_h=0.0, threads=0, run_history='results/run_history.csv', resume='', init='hframe', mass_step_frac_fe=0.01, mass_step_frac_f=0.01, iron_ref_kg=300.0, ferrite_ref_kg=200.0, w_misfit0=1000.0, w_grow=1.5, w_max=100000000.0, w_shrink=1.2, harm_order=6, gn_max_solves=3, gn_step_max=0.3, gn_lm=0.01, gn_fd_eps=0.02, sens_eps=0.03, sens_power=0.5, ls_max_fails=3, slab_x=0.3, slab_y=0.3, slab_t=0.05, slab_z0=0.15, plate_t=0.04, post_t=0.05, pole_t=0.01, results_dir='results/planx_stage1', n_surface_pts=600, viewer_h=0.02, slice_res=120)
+mesh: 20112 elements, 4041 vertices (1.3s)
+HCurl order 2: 108158 dofs
+[it   0] meanB=  71.393 mT  ppm= 577801.4  iron=  361.7 kg  ferrite=   44.0 kg  moved=0.00/0.00 kg  demag=0.12  J=3.0885e+02  w=1.00e+03  kappa=0.100  ok=False  (14s)
+    eta: timing... | expected finish unknown (no comparable earlier run)
+    try kappa=0.0000: J=4.5624e+02 (cur 4.6323e+02) meanB=72.05 ppm=565967 iron=363kg ferrite=45kg |nu|=7.22e-04
+[it   1] meanB=  72.052 mT  ppm= 565967.1  iron=  363.3 kg  ferrite=   44.8 kg  moved=3.00/0.93 kg  demag=0.12  J=4.5624e+02  w=1.50e+03  kappa=0.000  ok=False  (17s)
+    eta: 17 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:08
+    try kappa=0.0008: J=6.7818e+02 (cur 6.8431e+02) meanB=72.44 ppm=564235 iron=363kg ferrite=46kg |nu|=2.48e-08
+[it   2] meanB=  72.445 mT  ppm= 564235.3  iron=  363.2 kg  ferrite=   45.5 kg  moved=1.50/0.71 kg  demag=0.12  J=6.7818e+02  w=2.25e+03  kappa=0.001  ok=False  (17s)
+    eta: 17 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:08
+    try kappa=0.0009: J=1.0033e+03 (cur 1.0172e+03) meanB=73.05 ppm=562519 iron=363kg ferrite=46kg |nu|=3.72e-08
+[it   3] meanB=  73.049 mT  ppm= 562519.4  iron=  363.2 kg  ferrite=   46.2 kg  moved=1.50/0.70 kg  demag=0.11  J=1.0033e+03  w=3.38e+03  kappa=0.001  ok=False  (20s)
+    eta: 17 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:08
+    try kappa=0.0009: J=1.4845e+03 (cur 1.5050e+03) meanB=73.65 ppm=560649 iron=363kg ferrite=47kg |nu|=5.57e-08
+[it   4] meanB=  73.648 mT  ppm= 560649.5  iron=  363.1 kg  ferrite=   46.9 kg  moved=1.50/0.71 kg  demag=0.10  J=1.4845e+03  w=5.06e+03  kappa=0.001  ok=False  (20s)
+    eta: 18 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:09
+    try kappa=0.0009: J=2.1981e+03 (cur 2.2267e+03) meanB=74.21 ppm=558678 iron=363kg ferrite=48kg |nu|=8.36e-08
+[it   5] meanB=  74.206 mT  ppm= 558677.5  iron=  363.0 kg  ferrite=   47.6 kg  moved=1.50/0.70 kg  demag=0.08  J=2.1981e+03  w=7.59e+03  kappa=0.001  ok=False  (21s)
+    eta: 20 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:09
+    try kappa=0.0009: J=3.2552e+03 (cur 3.2971e+03) meanB=74.76 ppm=556597 iron=363kg ferrite=48kg |nu|=1.25e-07
+[it   6] meanB=  74.757 mT  ppm= 556597.2  iron=  362.8 kg  ferrite=   48.3 kg  moved=1.50/0.69 kg  demag=0.08  J=3.2552e+03  w=1.14e+04  kappa=0.001  ok=False  (20s)
+    eta: 20 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:09
+    try kappa=0.0009: J=4.8205e+03 (cur 4.8828e+03) meanB=75.31 ppm=554557 iron=363kg ferrite=49kg |nu|=1.88e-07
+[it   7] meanB=  75.305 mT  ppm= 554556.6  iron=  362.7 kg  ferrite=   49.0 kg  moved=1.50/0.69 kg  demag=0.08  J=4.8205e+03  w=1.71e+04  kappa=0.001  ok=False  (21s)
+    eta: 20 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:09
+    try kappa=0.0009: J=7.1379e+03 (cur 7.2307e+03) meanB=75.86 ppm=553007 iron=363kg ferrite=50kg |nu|=2.82e-07
+[it   8] meanB=  75.855 mT  ppm= 553007.4  iron=  362.5 kg  ferrite=   49.7 kg  moved=1.50/0.70 kg  demag=0.07  J=7.1379e+03  w=2.56e+04  kappa=0.001  ok=False  (21s)
+    eta: 20 s/it | expected finish unknown (no comparable earlier run) | latest finish Mon 20:09
+finished: iter_max after 8 iterations, 0.05 h, 25 field solves

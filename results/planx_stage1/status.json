@@ -1,0 +1,19 @@
+{
+ "state": "finished: iter_max",
+ "it": 8,
+ "iter_max": 8,
+ "started": "Mon 20:06",
+ "elapsed_h": 0.05170415659745534,
+ "s_per_it": 19.85334050655365,
+ "expected_its": null,
+ "eta_expected": null,
+ "eta_latest": "Mon 20:09",
+ "deadline": null,
+ "mean_mT": 75.85512142868954,
+ "ppm": 553007.3971867905,
+ "iron_kg": 362.50025718753477,
+ "ferrite_kg": 49.68968800761803,
+ "solves": 25,
+ "tries": 8,
+ "updated": "2026-10-05 20:09:20"
+}

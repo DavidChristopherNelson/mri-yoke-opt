@@ -40,7 +40,7 @@ class RunClock:
     def __init__(self, cfg, ne, ndof, threads):
         self.cfg, self.ne, self.ndof, self.threads = cfg, ne, ndof, threads
         self.t0 = time.time()
-        self.step_kg = cfg.mass_step_frac * cfg.mass_step_ref_kg
+        self.step_kg = cfg.mass_step_frac_fe * cfg.iron_ref_kg
         self.exp_its = expected_iterations(cfg.run_history, ne, cfg.init, self.step_kg)
         self.dts = []
 
@@ -73,7 +73,7 @@ class RunClock:
                     s_per_it=self.s_per_it(), expected_its=self.exp_its,
                     eta_expected=clock(expected) if expected else None, eta_latest=clock(latest) if latest else None,
                     deadline=clock(self.deadline()) if self.deadline() else None,
-                    mean_mT=m["mean_B"] * 1e3, ppm=m["ppm"], iron_kg=m["iron_kg"], solves=n_solves, tries=n_tries,
+                    mean_mT=m["mean_B"] * 1e3, ppm=m["ppm"], iron_kg=m["iron_kg"], ferrite_kg=m["ferrite_kg"], solves=n_solves, tries=n_tries,
                     updated=time.strftime("%Y-%m-%d %H:%M:%S"))
 
     def eta_line(self, it):
@@ -99,7 +99,7 @@ class RunClock:
                    harm_order=cfg.harm_order, init=cfg.init, step_kg=self.step_kg, iterations=it, tries=n_tries,
                    solves=n_solves, total_s=round(self.elapsed()), s_per_it=round(self.s_per_it() or 0, 1),
                    stop_reason=stop_reason, mean_mT=round(m["mean_B"] * 1e3, 3), ppm=round(m["ppm"]),
-                   iron_kg=round(m["iron_kg"], 1))
+                   iron_kg=round(m["iron_kg"], 1), ferrite_kg=round(m["ferrite_kg"], 1))
         os.makedirs(os.path.dirname(cfg.run_history) or ".", exist_ok=True)
         new = not os.path.exists(cfg.run_history)
         with open(cfg.run_history, "a", newline="") as f:

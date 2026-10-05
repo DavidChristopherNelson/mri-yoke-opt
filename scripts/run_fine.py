@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mriyoke.config import Config
 from mriyoke.optimize import Optimizer
 
-cfg = Config(maxh_design=0.022, maxh_dsv=0.0125, maxh_mag=0.020, maxh_air=0.10,
+cfg = Config(maxh_design=0.022, maxh_dsv=0.0125, maxh_air=0.10,
              iter_max=250, results_dir="results/fine")
 for kv in sys.argv[1:]:                       # any Config field overridable as key=value
     k, v = kv.split("="); setattr(cfg, k, type(getattr(cfg, k))(v))

@@ -1,4 +1,4 @@
-"""Post-hoc field metrics on the DSV surface, iron mass and cost."""
+"""Post-hoc field metrics on the DSV surface, iron and ferrite mass and cost."""
 import numpy as np
 from ngsolve import Integrate, dx, CoefficientFunction
 from .config import Config
@@ -32,12 +32,16 @@ def dsv_metrics(mesh, ms, cfg: Config, pts=None):
                 n_pts=len(pts))
 
 
-def iron_mass_full(v_octant, cfg: Config):
-    return 8 * v_octant * cfg.iron_density
+def masses_full(v_fe, v_f, cfg: Config):
+    """Iron and ferrite mass [kg] of the full magnet from the 1/8-model volumes."""
+    return 8 * v_fe * cfg.iron_density, 8 * v_f * cfg.ferrite_density
 
 
-def iron_cost_full(v_octant, cfg: Config):
-    return iron_mass_full(v_octant, cfg) * cfg.iron_cost_per_kg
+def costs_full(v_fe, v_f, cfg: Config):
+    """(C_fe, C_f, C_fe + C_f + C_fixed) in $ for the full magnet."""
+    m_fe, m_f = masses_full(v_fe, v_f, cfg)
+    c_fe, c_f = m_fe * cfg.iron_cost_per_kg, m_f * cfg.ferrite_cost_per_kg
+    return c_fe, c_f, c_fe + c_f + cfg.C_fixed
 
 
 def constraints_ok(m, cfg: Config):

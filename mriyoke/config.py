@@ -18,13 +18,20 @@ class Config:
     dsv_radius: float = 0.100         # PLACEHOLDER: 200 mm DSV
     clearance: float = 0.020          # air shell around DSV where no iron allowed [m]
 
-    # ---- pole magnet: rectangular prism, magnetized +z, one per side ----
-    mag_x: float = 0.300              # PLACEHOLDER full width [m]
-    mag_y: float = 0.300              # PLACEHOLDER full depth [m]
-    mag_t: float = 0.050              # PLACEHOLDER thickness [m]
-    gap: float = 0.300                # PLACEHOLDER pole-face to pole-face gap [m]
-    Br: float = 1.30                  # PLACEHOLDER NdFeB N42 remanence [T]
-    mu_r_mag: float = 1.05
+    # ---- patient/bed keep-out envelope: box centred at origin, no iron or ferrite inside ----
+    env_x: float = 0.400              # PLACEHOLDER full width [m]
+    env_y: float = 0.400              # PLACEHOLDER full depth [m]
+    env_z: float = 0.300              # PLACEHOLDER full height = pole gap [m]
+
+    # ---- ferrite (design variable, magnetized +-z per element) ----
+    Br_f: float = 0.40                # remanence [T]
+    mu_r_f: float = 1.05
+    ferrite_density: float = 4900.0   # kg/m^3
+    ferrite_cost_per_kg: float = 3.0  # PLACEHOLDER $/kg
+    C_fixed: float = 15000.0          # PLACEHOLDER fixed cost of the scanner [$]
+    Hcj_cold: float = 250e3           # intrinsic coercivity at the coldest operating temperature [A/m]
+    demag_frac: float = 0.8           # demagnetisation gate: H.m >= -demag_frac * Hcj_cold
+    demag_weight: float = 10.0        # weight of the quadratic demagnetisation penalty
 
     # ---- design domain (1/8 octant box) and air box ----
     design_L: float = 0.450           # design box edge from origin [m]
@@ -40,8 +47,7 @@ class Config:
     # ---- mesh ----
     maxh_air: float = 0.12
     maxh_design: float = 0.035
-    maxh_dsv: float = 0.025
-    maxh_mag: float = 0.025
+    maxh_dsv: float = 0.025            # imaging region (envelope box)
     fe_order: int = 2
 
     # ---- solver ----
@@ -66,9 +72,11 @@ class Config:
     threads: int = 0                  # NGSolve TaskManager threads; 0 = all (set when several runs share a machine)
     run_history: str = "results/run_history.csv"   # one row per finished run: size, machine, timing; feeds the ETA
     resume: str = ""                  # path to psi_latest.npy / psi_final.npy of an earlier run on the same mesh
-    init: str = "empty"               # initial design: "empty" (no iron, yoke is built up) or "hframe" (plate + post + pole guess)
-    mass_step_frac: float = 0.01      # per step, iron added + iron removed <= this fraction of mass_step_ref_kg
-    mass_step_ref_kg: float = 300.0   # PLACEHOLDER reference mass for the step cap (~ expected yoke mass, full magnet)
+    init: str = "hframe"              # initial design: "hframe" (iron plate + post + pole, ferrite slab) or "empty" (no field without ferrite: test only)
+    mass_step_frac_fe: float = 0.01   # per step, iron added + iron removed <= this fraction of iron_ref_kg
+    mass_step_frac_f: float = 0.01    # same for ferrite, fraction of ferrite_ref_kg
+    iron_ref_kg: float = 300.0        # PLACEHOLDER reference masses for the step caps (~ expected mass, full magnet)
+    ferrite_ref_kg: float = 200.0     # PLACEHOLDER
     w_misfit0: float = 1e3            # initial penalty weight on field misfit
     w_grow: float = 1.5               # multiply when constraints violated
     w_max: float = 1e8
@@ -82,7 +90,11 @@ class Config:
     sens_power: float = 0.5           # scaling exponent: 1 = all regions move alike, 0 = raw sensitivity; < 1 keeps the ranking
     ls_max_fails: int = 3             # consecutive failed line searches before stopping
 
-    # ---- initial iron guess: back plate + posts + pole plate (1/8 octant boxes) ----
+    # ---- initial guess: iron back plate + posts + pole plate, ferrite slab (1/8 octant boxes) ----
+    slab_x: float = 0.300             # ferrite slab full width [m]
+    slab_y: float = 0.300             # full depth [m]
+    slab_t: float = 0.050             # thickness [m]
+    slab_z0: float = 0.150            # lower face (>= env_z / 2) [m]
     plate_t: float = 0.040
     post_t: float = 0.050
     pole_t: float = 0.010
@@ -94,9 +106,10 @@ class Config:
     slice_res: int = 120
 
     @property
-    def z_mag0(self):
-        return self.gap / 2
+    def z_slab1(self):
+        return self.slab_z0 + self.slab_t
 
     @property
-    def z_mag1(self):
-        return self.gap / 2 + self.mag_t
+    def M_f(self):
+        """Magnetization source of full ferrite, (Br_f / mu0) / mu_r_f [A/m]."""
+        return self.Br_f * NU0 / self.mu_r_f

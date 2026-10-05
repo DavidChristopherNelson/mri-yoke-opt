@@ -1,4 +1,4 @@
-"""1/8-octant OCC geometry: air box, design box, clearance shell, DSV, pole magnet."""
+"""1/8-octant OCC geometry: air box, design box, patient/bed envelope (keep-out) with clearance shell and DSV."""
 from netgen.occ import Box, Sphere, Glue, OCCGeometry, Pnt
 from ngsolve import Mesh
 from .config import Config
@@ -6,11 +6,11 @@ from .config import Config
 
 def build_geometry(cfg: Config):
     L, D, r, rc = cfg.air_L, cfg.design_L, cfg.dsv_radius, cfg.dsv_radius + cfg.clearance
+    ex, ey, ez = cfg.env_x / 2, cfg.env_y / 2, cfg.env_z / 2
+    assert rc < min(ex, ey, ez) and max(ex, ey, ez) < D, "DSV + clearance must fit in the envelope, envelope in the design box"
     octant_D = Box(Pnt(0, 0, 0), Pnt(D, D, D))
     octant_L = Box(Pnt(0, 0, 0), Pnt(L, L, L))
-
-    mag = Box(Pnt(0, 0, cfg.z_mag0), Pnt(cfg.mag_x / 2, cfg.mag_y / 2, cfg.z_mag1))
-    mag.mat("magnet"); mag.maxh = cfg.maxh_mag
+    env_box = Box(Pnt(0, 0, 0), Pnt(ex, ey, ez))
 
     dsv = Sphere(Pnt(0, 0, 0), r) * octant_D
     dsv.mat("dsv"); dsv.maxh = cfg.maxh_dsv
@@ -18,13 +18,16 @@ def build_geometry(cfg: Config):
     clear = (Sphere(Pnt(0, 0, 0), rc) - Sphere(Pnt(0, 0, 0), r)) * octant_D
     clear.mat("clear"); clear.maxh = cfg.maxh_dsv
 
-    design = octant_D - mag - Sphere(Pnt(0, 0, 0), rc)
+    env = env_box - Sphere(Pnt(0, 0, 0), rc)
+    env.mat("env"); env.maxh = cfg.maxh_dsv
+
+    design = octant_D - env_box
     design.mat("design"); design.maxh = cfg.maxh_design
 
     air = octant_L - octant_D
     air.mat("air"); air.maxh = cfg.maxh_air
 
-    shape = Glue([air, design, clear, dsv, mag])
+    shape = Glue([air, design, env, clear, dsv])
     tol = 1e-9
     for f in shape.faces:
         c = f.center
