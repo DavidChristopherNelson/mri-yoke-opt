@@ -1,4 +1,4 @@
-# Plan (revised 2026-09-27)
+# Plan (revised 2026-09-27; objective and design variables superseded by Plan X, section 10, 2026-10-05)
 
 Supersedes the original "Initial Reduced Scope MRI Yoke/Bucking Magnet" brief. Decisions from review:
 NGSolve primary, defaults win over brief, no randomness, no bucking magnets, solid iron, H-frame, 3D only.
@@ -118,3 +118,80 @@ Other: objective is again the misfit about B0 (so the mean is one of the correct
 2. Pole magnet: grade, x/y/thickness, gap (placeholders N42, 300×300×50 mm, 300 mm)?
 3. Iron $/kg (placeholder 2)?
 4. Air-box size / far-field treatment acceptable (1 m octant)?
+
+## 10. Plan X (2026-10-05): free iron + ferrite topology, cost per good imaging voxel
+
+Sections 1–8 describe the earlier formulation (fixed NdFeB pole magnets, DSV sphere, field misfit + ppm). What is kept from it: the HCurl A-formulation with Brauer iron and damped Newton, CG + BDDC, the level-set / cut-ratio machinery, the line search with a Gauss–Newton trust region, exports, timing, session runner, checkpoints. What changed:
+
+### 10.1 Design variables
+
+- No fixed magnet. Design domain = 1/8 design box minus the patient/bed keep-out envelope `[0, env_x/2] × [0, env_y/2] × [0, env_z/2]` (placeholders 400 × 400 × 300 mm full size).
+- Two level sets on the same mesh: ψ < 0 iron, ψ_f < 0 ferrite; ferrite wins overlaps, so cr + cr_f ≤ 1.
+- Per-element polarity p ∈ {+1, −1}: ferrite is magnetized along ±z.
+- Material law (geometric mix): ν = ν0^(1−cr−cr_f) · ν_iron(B)^cr · (ν0/μr_f)^cr_f. Source everywhere in the design domain: M = cr_f · p · (Br_f/μ0)/μr_f · e_z. Ferrite: Br_f = 0.40 T, μr_f = 1.05, 4900 kg/m³.
+- Sensitivities for any functional (K λ = ∂J/∂A): dJ/dcr_e = −∫_e ∂ν/∂cr curlA·curlλ; dJ/dcr_f,e = −∫_e ∂ν/∂cr_f curlA·curlλ + p (Br_f/μ0)/μr_f ∫_e e_z·curlλ. Checked against finite differences (`scripts/test_gradient.py`).
+- Polarity: dJ/dp_e = cr_f,e M_f ∫_e e_z·curlλ, so the polarity that lowers J is p_e = −sign(∫_e e_z·curlλ_J) (λ_J the adjoint of the minimised J; the brief's "sign(...)" with the sign convention made explicit). **Deviation**: it is applied every iteration only to elements that hold no ferrite yet, so new ferrite nucleates with the best polarity. Flipping existing ferrite is a finite jump outside the line search (near the band every element would flip whenever the field overshoots); existing ferrite changes polarity by being removed and regrown. Noise seeds set all polarities once from one forward + adjoint solve.
+- Step caps per accepted iteration: iron moved (added + removed) ≤ `mass_step_frac_fe` × `iron_ref_kg`, ferrite moved ≤ `mass_step_frac_f` × `ferrite_ref_kg` (1 % × 300 kg, 1 % × 200 kg; reference masses are placeholders). Each level set gets its own cap on κ, so a tight cap on one material does not slow the other; the mean-field correction is scaled to respect both.
+- Demagnetisation gate: per ferrite element h = H·(p e_z) = (ν0/μr_f) p B_z − M_f; reported `demag_frac` = ferrite volume fraction with h < −0.8 Hcj(T_cold) (250 kA/m default); quadratic penalty `demag_weight` × Σ cr_f vol ((−0.8 Hcj − h)/Hcj)²₊ / V_ref added to the objective.
+- Cost in dollars for the full magnet: C = C_fe + C_f + C_fixed (placeholders: iron $2/kg, ferrite $3/kg, C_fixed $15000).
+
+### 10.2 Objective
+
+minimise F = (C_fe + C_f + C_fixed) / N_green
+
+- Imaging voxels: regular grid, edge `dx_img` = 3 mm, filling the envelope box (1/8 in the model).
+- A voxel is green when, at its centre, | |B| − B_c | ≤ dB_band/2 (B_c = 0.1592 T, fixed) and | ∂|B|/∂r | ≤ s_max = κ_s · dB_band / (2 δ dx_img), r = readout axis (y).
+- Hardware derivation: dB_band = min(ism_fraction × 0.70 mT, 2 δ dx_img G_max), ism_fraction = 0.5, δ = 5 (field-map corrected; 1 if not), G_max = 10 mT/m, κ_s = 0.4. With the defaults: dB_band = 0.30 mT (G_max binds; the ISM limit would be 0.35 mT), s_max = 4 mT/m. Logged at the start of every run.
+- Exact count (reported): |B| from the FE solution at the voxel centres, slope by central differences on the voxel grid, both tests, 6-connected components with the symmetry planes as mirrors; N_green = largest component, counted in the full magnet (a component touching t symmetry planes joins 2^t of its mirror images).
+- Smooth count (differentiated): N_s = Σ_x σ((dB_band/2 − |b − B_c|)/w_b) · σ((s_max − |∂b/∂r|)/w_s), b = Σ_k a_k φ_k the projection of |B| on the even harmonic polynomials up to degree `harm_order` (8 → 15 modes). ∂N_s/∂cr = Σ_k (∂N_s/∂a_k)(∂a_k/∂cr), one adjoint solve per mode, one Jacobian. No connectivity in the gradient.
+- Widths: geometric continuation from `anneal_start` × (dB_band, s_max) to `anneal_end` × (…) over `anneal_iters` iterations (1 → 0.05 over 100).
+- The optimiser minimises J = ln(C / N_s) + demagnetisation penalty (same minimiser as C/N_s; the logarithm stays finite while N_s is astronomically small).
+- Gauss–Newton correction only for the mean field of the current largest green component (projection mean over its voxels; sphere of radius 50 mm at the origin while there is none), target B_c.
+- Removed: field misfit, ppm, mean tolerance, penalty weight w, `constraints_ok`, DSV, clearance shell, magnet body.
+
+### 10.3 Precondition (SNR)
+
+`scripts/precheck.py`: K0 √T_scan / √(1 + γ t_ov dB_band / (4π δ)) ≥ SNR* (1 + κ_s), with G_r = dB_band / (2 δ dx_img). The optimiser never uses SNR. **K0 is not defined in the brief**; the script uses K0 = ω0 B1⁻ M0 dx³ f_seq / (F_rx √(4 k_B (T_coil R_coil + T_body R_body))), M0 = ρ γ² ħ² B_c / (4 k_B T_body), f_seq = (1 − e^(−TR/T1)) κ_T2. Replace if a different definition was meant.
+
+### 10.4 Seeds and multi-start
+
+- `init=noise:<seed>`: two white-noise fields on a grid of pitch `h_seed` (10 mm), Gaussian-blurred with correlation length `ell_seed` (40 mm), thresholded at the quantiles that give 20 % iron and 10 % ferrite of the design volume. Deterministic given the seed; no randomness inside the loop.
+- `init=hframe:thin|medium|thick`: iron back plate + post, ferrite slab 30 / 50 / 80 mm at the old magnet position.
+- `scripts/multistart.py`: N noise seeds + 3 H-frame seeds through `session.py`, then `summary.csv` and IoU matrices of the final iron and ferrite masks.
+- With 20 % iron a noise seed starts at ~1000 kg; under the 1 % cap (3 kg per step) it sheds mass slowly.
+
+### 10.5 Deviations from the Plan X brief and things found while building it
+
+| brief | built | why |
+|---|---|---|
+| projection Gram matrix over the whole envelope | over a sphere of radius `proj_radius` (100 mm) at the centre, meshed as its own region; the smooth count sums the voxels inside it. `proj_radius=0` gives the brief's variant | sources touch the envelope box, so the polynomial projection does not converge there: on the H-frame start |B| spans 9–324 mT in the box, residual 7 mT rms and a 5 mT bias at the centre, unchanged for degree 6–12. The band is ±0.15 mT. In the sphere the residual is the FE noise of the mesh |
+| widths start at ~dB_band, ~s_max | same schedule, but w_b ≥ rms deviation of the projected field from B_c over the blob (w_s widened by the same factor) | 80 mT from the band a 0.3 mT sigmoid sees one voxel; J was then not a usable function of the design (line search failed at iteration 2) |
+| polarity updated every iteration | only where there is no ferrite yet (10.1) | uncontrolled jumps |
+| one κ limited by both caps | κ capped per level set | the iron cap throttled ferrite growth to a third of its cap |
+| K0 given | assumed (10.3) | not in the brief |
+| exact count needs |B| and ∂|B|/∂r "from the FE solution" | slope by central differences of the sampled |B| | curl A is piecewise linear and discontinuous; no usable pointwise derivative |
+
+Found on the way:
+- The exact cut-ratio formula of the earlier code cancelled catastrophically when a tet had several identical nodal values (signed-distance level sets have flat parts): elements flipped between 0 and 1 for a 1e-9 perturbation. Replaced by closed forms per number of negative vertices without such differences.
+- The H-frame start is now a signed-distance level set; the ±1 indicator lost 6 % of the slab volume to interpolation.
+- The Newton reference residual is recomputed per solve (the source now depends on the design).
+
+### 10.6 Validation
+
+| check | result |
+|---|---|
+| Stage 1 forward: H-frame + slab with Br_f = 1.3 T vs old coarse run, iteration 0 | 227.0 mT vs 227.5 mT (DSV-surface mean) |
+| Stage 1 adjoint vs finite differences (misfit, demag; cr, cr_f, polarity source) | within 2 % (demag on empty elements 4 %) |
+| Stage 1 optimisation, 8 iterations | runs; field rises 0.6 mT/iteration under the caps |
+| Stage 2 adjoint vs finite differences (ln N_s, demag; cr, cr_f, polarity source), δ = 1e-2 | ln N_s within 1.5 %; demag within 8 % (kinked penalty) |
+| Stage 2 optimisation, H-frame medium, 6 iterations | blob mean 71 → 78 mT, ferrite +1.35 kg/iteration (cap 2), iron cap (3 kg) binding |
+
+Coarse mesh: FE noise in |B| is ~1–3 mT in the projection sphere against a ±0.15 mT band, so N_green on this mesh says nothing about the design; coarse runs validate the pipeline only. `resid=` in the log is that noise; a warning is printed once it exceeds dB_band/4 inside a green blob.
+
+### 10.7 Open questions (Plan X)
+
+1. Envelope size (placeholder 400 × 400 × 300 mm)?
+2. Costs: ferrite $/kg, iron $/kg, C_fixed?
+3. Reference masses for the 1 % caps (300 kg iron, 200 kg ferrite)?
+4. K0 definition for the precheck?
+5. Projection sphere radius (100 mm) acceptable, or mesh the envelope so finely near the sources that a box projection is not needed?

@@ -67,6 +67,27 @@ def surface(vals, h, cfg: Config, level=0.0):
                 ntri=int(len(faces)))
 
 
+def green_surface(blob, cfg: Config):
+    """Surface of the largest green component (boolean voxel grid of the 1/8 model, voxel centres), block-averaged
+    to ~9 mm and mirrored to the full magnet."""
+    f = max(1, int(round(0.009 / cfg.dx_img)))
+    n = [-(-d // f) * f for d in blob.shape]
+    b = np.zeros(n); b[:blob.shape[0], :blob.shape[1], :blob.shape[2]] = blob
+    b = b.reshape(n[0] // f, f, n[1] // f, f, n[2] // f, f).mean(axis=(1, 3, 5))
+    for axis in range(3):                                      # cell-centred: mirror without dropping a layer
+        b = np.concatenate([np.flip(b, axis=axis), b], axis=axis)
+    b = np.pad(1.0 - b, 1, constant_values=1.0)
+    if b.min() >= 0.5:
+        return dict(pos="", idx="", ntri=0)
+    h = f * cfg.dx_img
+    verts, faces, _, _ = measure.marching_cubes(b, level=0.5, spacing=(h, h, h))
+    verts = verts - (np.array(b.shape) / 2 - 0.5) * h
+    D = cfg.design_L
+    q = np.clip(np.round((verts + D) / (2 * D) * 65535), 0, 65535).astype(np.uint16)
+    return dict(pos=base64.b64encode(q.tobytes()).decode(), idx=base64.b64encode(faces.astype(np.uint32).tobytes()).decode(),
+                ntri=int(len(faces)))
+
+
 def frame_from_fields(fields, cfg: Config):
     return {k: surface(v, cfg.viewer_h, cfg) for k, v in fields.items()}
 
@@ -144,17 +165,18 @@ def write_slice_png(mesh, ms, des, cfg: Config, path, title=""):
     nBf, crf, ferf = full(ev(ms.normB) * 1e3), full(ev(ms.cr)), full(ev(ms.crf) * ev(ms.pol))
     ext = [-D, D, -D, D]
     fig, axs = plt.subplots(1, 3, figsize=(17, 5.5))
-    im = axs[0].imshow(nBf.T, origin="lower", extent=ext, cmap="viridis", vmin=0, vmax=max(cfg.B0 * 1e3 * 2, 1))
-    axs[0].set_title("|B| [mT], plane y=0"); plt.colorbar(im, ax=axs[0])
+    im = axs[0].imshow(nBf.T, origin="lower", extent=ext, cmap="viridis", vmin=0, vmax=cfg.B_c * 2e3)
+    lv = [(cfg.B_c - cfg.dB_band / 2) * 1e3, (cfg.B_c + cfg.dB_band / 2) * 1e3]
+    axs[0].contour(nBf.T, levels=lv, extent=ext, colors=["lime", "white"], linewidths=0.8)
+    axs[0].set_title("|B| [mT], plane y=0; band edges: green (low), white (high)"); plt.colorbar(im, ax=axs[0])
     axs[1].imshow(crf.T, origin="lower", extent=ext, cmap="Greys", vmin=0, vmax=1)
     axs[1].set_title("iron fraction, plane y=0")
     axs[2].imshow(ferf.T, origin="lower", extent=ext, cmap="bwr", vmin=-1, vmax=1)
     axs[2].set_title("ferrite fraction x polarity (red +z, blue -z), plane y=0")
     for a in axs:
         a.add_patch(plt.Rectangle((-cfg.env_x / 2, -cfg.env_z / 2), cfg.env_x, cfg.env_z, fill=False, ec="deepskyblue", lw=1.5))
-        a.add_patch(plt.Circle((0, 0), cfg.dsv_radius, fill=False, ec="deepskyblue", lw=1.0, ls="--"))
         a.set_xlabel("x [m]"); a.set_ylabel("z [m]")
-    fig.suptitle(title); fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)
+    fig.suptitle(title, fontsize=10); fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)
 
 
 def write_history_png(hist, cfg: Config, path):
@@ -163,11 +185,18 @@ def write_history_png(hist, cfg: Config, path):
     import matplotlib.pyplot as plt
     it = [h["it"] for h in hist]
     fig, axs = plt.subplots(2, 2, figsize=(11, 7))
-    axs[0, 0].semilogy(it, [h["ppm"] for h in hist], "o-"); axs[0, 0].axhline(cfg.ppm_max, c="r", ls="--"); axs[0, 0].set_title("(max-min)/mean [ppm]")
-    axs[0, 1].plot(it, [h["mean_B"] * 1e3 for h in hist], "o-"); axs[0, 1].axhline(cfg.B0 * 1e3, c="r", ls="--"); axs[0, 1].set_title("mean |B| on DSV surface [mT]")
+    axs[0, 0].semilogy(it, [max(h["N_green"], 0.5) for h in hist], "o-", label="N_green (exact, largest component)")
+    axs[0, 0].semilogy(it, [max(h["N_smooth"], 0.5) for h in hist], "s--", label="N_smooth"); axs[0, 0].legend(); axs[0, 0].set_title("good imaging voxels, full magnet")
+    axs[0, 1].plot(it, [h["blob_mean"] * 1e3 for h in hist], "o-"); axs[0, 1].axhline(cfg.B_c * 1e3, c="r", ls="--"); axs[0, 1].set_title("mean |B| of the green blob (projection) [mT]")
     axs[1, 0].plot(it, [h["iron_kg"] for h in hist], "o-", label="iron"); axs[1, 0].plot(it, [h["ferrite_kg"] for h in hist], "s-", label="ferrite")
     axs[1, 0].legend(); axs[1, 0].set_title("mass, full magnet [kg]")
-    axs[1, 1].semilogy(it, [h["J"] for h in hist], "o-", label="J"); axs[1, 1].semilogy(it, [h["w"] for h in hist], "s--", label="w"); axs[1, 1].semilogy(it, [h["f"] for h in hist], "^-", label="misfit f"); axs[1, 1].legend(); axs[1, 1].set_title("objective J = w f + c + demag penalty / penalty weight / misfit")
+    fin = [(i, h["F"]) for i, h in zip(it, hist) if np.isfinite(h["F"])]
+    if fin:
+        axs[1, 1].semilogy(*zip(*fin), "o-", label="F = cost / N_green")
+    fs = [(i, h["F_smooth"]) for i, h in zip(it, hist) if np.isfinite(h["F_smooth"]) and h["F_smooth"] < 1e12]
+    if fs:
+        axs[1, 1].semilogy(*zip(*fs), "s--", label="cost / N_smooth")
+    axs[1, 1].legend(); axs[1, 1].set_title("cost per good voxel [$]")
     for a in axs.ravel():
         a.set_xlabel("iteration"); a.grid(alpha=.3)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)

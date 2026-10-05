@@ -1,7 +1,7 @@
 """Run several design variants side by side for one session (default 10 h) with a live read-out.
 
-  python scripts/session.py overnight "base" "clear30:clearance=0.03" "harm8:harm_order=8"
-  python scripts/session.py day --hours 10 --script run_coarse.py "a:mass_step_frac=0.03" "b:sens_power=0.3"
+  python scripts/session.py overnight "base" "gmax20:G_max=0.02" "harm10:harm_order=10"
+  python scripts/session.py day --hours 10 --script run_coarse.py "a:mass_step_frac_f=0.03" "b:sens_power=0.3"
 
 Each variant is NAME[:key=value,key=value...] (any Config field). Results go to results/<session>/<NAME>/.
 The machine's threads are split evenly between the variants; every run stops cleanly at the time budget
@@ -36,7 +36,7 @@ while True:
     lines = [f"session {a.session}: started {time.strftime('%a %H:%M', time.localtime(t0))}, "
              f"budget ends {time.strftime('%a %H:%M', time.localtime(t0 + 3600 * a.hours))}, now {time.strftime('%a %H:%M:%S')}, "
              f"{len(runs)} runs x {threads} threads",
-             fmt.format("run", "state", "it", "s/it", "mean mT", "ppm", "iron kg", "hours", "expected", "latest")]
+             fmt.format("run", "state", "it", "s/it", "mean mT", "N_green", "F $/vox", "hours", "expected", "latest")]
     for name, d, p in runs:
         try:
             with open(os.path.join(ROOT, d, "status.json")) as f:
@@ -49,7 +49,7 @@ while True:
             continue
         state = s["state"] if p.poll() is None or s["state"].startswith("finished") else f"crashed ({p.returncode})"
         lines.append(fmt.format(name, state, f"{s['it']}/{s['iter_max']}", f"{s['s_per_it']:.0f}" if s["s_per_it"] else "",
-                                f"{s['mean_mT']:.2f}", f"{s['ppm']:.0f}", f"{s['iron_kg']:.1f}", f"{s['elapsed_h']:.2f}",
+                                f"{s['mean_mT']:.2f}", f"{s['N_green']}", f"{s['F']:.3g}" if s["F"] else "inf", f"{s['elapsed_h']:.2f}",
                                 s["eta_expected"] or "unknown", s["eta_latest"] or ""))
     text = "\n".join(lines)
     with open(os.path.join(ROOT, "results", a.session, "status.txt"), "w") as f:

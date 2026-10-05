@@ -58,17 +58,20 @@ class LevelSet:
 
     @staticmethod
     def cut_fraction(vals):
-        """Volume fraction of {f<0} in tets, vals: (ne,4) nodal values of linear f."""
+        """Volume fraction of {f<0} in tets, vals: (ne,4) nodal values of linear f.
+        Closed forms by number of negative vertices, written without differences of nearly equal values
+        (level sets with flat parts, e.g. signed distances, give tets with several identical nodal values)."""
         v = np.sort(vals, axis=1).astype(np.float64)
-        # break ties
-        v = v + np.arange(4)[None, :] * 1e-12 * (1 + np.abs(v).max(axis=1, keepdims=True))
-        frac = np.zeros(v.shape[0])
-        neg = v < 0
-        for i in range(4):
-            others = [j for j in range(4) if j != i]
-            denom = np.prod([v[:, j] - v[:, i] for j in others], axis=0)
-            term = (-v[:, i]) ** 3 / denom
-            frac += np.where(neg[:, i], term, 0.0)
+        n = (v < 0).sum(axis=1)
+        tiny = 1e-300
+        # one negative vertex: corner tet at v0;  three negative: complement of the corner tet at v3
+        one = (-v[:, 0]) ** 3 / np.maximum((v[:, 1] - v[:, 0]) * (v[:, 2] - v[:, 0]) * (v[:, 3] - v[:, 0]), tiny)
+        three = 1 - v[:, 3] ** 3 / np.maximum((v[:, 3] - v[:, 0]) * (v[:, 3] - v[:, 1]) * (v[:, 3] - v[:, 2]), tiny)
+        # two negative (p = -v0, q = -v1 > 0 <= a = v2, b = v3): divided difference of t^3 / ((a+t)(b+t)), expanded
+        p, q, a, b = -v[:, 0], -v[:, 1], v[:, 2], v[:, 3]
+        two = (a * b * (p * p + p * q + q * q) + (a + b) * p * q * (p + q) + p * p * q * q) \
+            / np.maximum((a + p) * (b + p) * (a + q) * (b + q), tiny)
+        frac = np.select([n == 0, n == 1, n == 2, n == 3], [0.0, one, two, three], default=1.0)
         return np.clip(frac, 0.0, 1.0)
 
     def cutratio(self, nodal):
@@ -123,14 +126,16 @@ class LevelSet:
 
 
 class Design:
-    """Iron and ferrite level sets moved together: psi_new = (1-kappa) psi + kappa g + sum_k nu_k d_k for each,
-    with the same kappa and nu. All cut ratios are returned as pairs (cr, crf) with cr + crf <= 1."""
+    """Iron and ferrite level sets moved together: psi_new = (1-k) psi + k g + sum_j nu_j d_j for each, with the
+    same nu and k = min(kappa, own cap): the cap of each level set comes from its own mass-step limit, so a tight
+    limit on one material does not slow the other. All cut ratios are pairs (cr, crf) with cr + crf <= 1."""
 
     def __init__(self, mesh, ms, cfg: Config):
         self.ms, self.cfg = ms, cfg
         self.fe = LevelSet(mesh, ms, cfg, "psi")
         self.f = LevelSet(mesh, ms, cfg, "psi_f")
         self.vol_e, self.design_mask = ms.vol_e, ms.design_mask
+        self.kcap = [np.inf, np.inf]
 
     def _pair(self, n_fe, n_f):
         crf = self.f.cutratio(n_f)
@@ -139,8 +144,11 @@ class Design:
     def cr_current(self):
         return self._pair(self.fe.psi.vec.FV().NumPy(), self.f.psi.vec.FV().NumPy())
 
+    def _nodal(self, kappa, nu):
+        return self.fe.nodal_trial(min(kappa, self.kcap[0]), nu), self.f.nodal_trial(min(kappa, self.kcap[1]), nu)
+
     def cr_trial(self, kappa, nu):
-        return self._pair(self.fe.nodal_trial(kappa, nu), self.f.nodal_trial(kappa, nu))
+        return self._pair(*self._nodal(kappa, nu))
 
     def apply(self, cr):
         """Write a cut-ratio pair into the field problem."""
@@ -169,20 +177,24 @@ class Design:
         return mv[0] <= caps[0] and mv[1] <= caps[1]
 
     def kappa_cap(self, cr_cur, caps, kappa_hi):
-        """Largest kappa <= kappa_hi whose fixed-point step respects both caps."""
+        """Sets the per-material caps on kappa so that the fixed-point step (nu = 0) respects both volume caps;
+        returns the largest useful kappa (<= kappa_hi). Ferrite first: it wins overlaps, so its step also moves iron."""
         nu = np.zeros(self.n_modes)
-        if self.within(kappa_hi, nu, cr_cur, caps):
-            return kappa_hi
-        lo, hi = 0.0, kappa_hi
-        for _ in range(30):
-            mid = 0.5 * (lo + hi)
-            lo, hi = (mid, hi) if self.within(mid, nu, cr_cur, caps) else (lo, mid)
-        return lo
+        self.kcap = [kappa_hi, kappa_hi]
+        for i in (1, 0):
+            if self.moved(kappa_hi, nu, cr_cur)[i] <= caps[i]:
+                continue
+            lo, hi = 0.0, kappa_hi
+            for _ in range(30):
+                self.kcap[i] = 0.5 * (lo + hi)
+                lo, hi = (self.kcap[i], hi) if self.moved(kappa_hi, nu, cr_cur)[i] <= caps[i] else (lo, self.kcap[i])
+            self.kcap[i] = lo
+        return max(self.kcap)
 
     def response(self, kappa, nu, G, eps):
         """M[k, j] = d rho_k / d nu_j at the trial level sets, linear model: rho-sensitivities G = (G_fe, G_f)
         times the (finite-difference) cut-ratio change of a shift along mode direction j. No field solves."""
-        b_fe, b_f = self.fe.nodal_trial(kappa, nu), self.f.nodal_trial(kappa, nu)
+        b_fe, b_f = self._nodal(kappa, nu)
         M = np.zeros((len(G[0]), self.n_modes))
         for j in range(self.n_modes):
             p = self._pair(b_fe + eps * self.fe.d_np[j], b_f + eps * self.f.d_np[j])
@@ -192,9 +204,10 @@ class Design:
 
     def set_trial(self, kappa, nu):
         """Store the trial level sets and write their cut ratios into the field problem."""
-        self.fe.psi_new.vec.FV().NumPy()[:] = self.fe.nodal_trial(kappa, nu)
-        self.f.psi_new.vec.FV().NumPy()[:] = self.f.nodal_trial(kappa, nu)
-        self.apply(self.cr_trial(kappa, nu))
+        n_fe, n_f = self._nodal(kappa, nu)
+        self.fe.psi_new.vec.FV().NumPy()[:] = n_fe
+        self.f.psi_new.vec.FV().NumPy()[:] = n_f
+        self.apply(self._pair(n_fe, n_f))
 
     def accept(self):
         self.fe.accept(); self.f.accept()

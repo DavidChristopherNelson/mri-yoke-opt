@@ -9,14 +9,21 @@ NU0 = 1.0 / MU0
 
 @dataclass
 class Config:
-    # ---- target ----
-    B0: float = 0.159                 # target mean |B| in imaging volume [T]
-    mean_tol: float = 1e-3            # ± tolerance on mean [T]
-    ppm_max: float = 400.0            # (max-min)/mean over DSV surface [ppm]
-
-    # ---- imaging volume (sphere, centred at origin) ----
-    dsv_radius: float = 0.100         # PLACEHOLDER: 200 mm DSV
-    clearance: float = 0.020          # air shell around DSV where no iron allowed [m]
+    # ---- imaging: a voxel is green when | |B| - B_c | <= dB_band / 2 and | d|B|/dr | <= s_max at its centre ----
+    B_c: float = 0.1592               # centre field [T] (6.78 MHz ISM band)
+    dx_img: float = 0.003             # imaging voxel edge [m]; the voxel grid fills the envelope box
+    readout_axis: str = "y"           # r in d|B|/dr
+    ism_band: float = 0.70e-3         # width of the ISM band in field units [T]
+    ism_fraction: float = 0.5         # usable fraction of it
+    delta: float = 5.0                # tolerated readout displacement in voxels (5: field-map corrected; 1 if not)
+    G_max: float = 0.010              # maximum readout gradient [T/m]
+    kappa_s: float = 0.4              # allowed static slope as a fraction of the readout gradient
+    anneal_start: float = 1.0         # sigmoid widths of the smooth count, as fractions of dB_band and s_max:
+    anneal_end: float = 0.05          #   geometric continuation from anneal_start to anneal_end
+    anneal_iters: int = 100           #   over this many iterations
+    proj_radius: float = 0.10         # the polynomial projection and the smooth count live in this sphere (own mesh region);
+                                      #   0 = whole envelope box (does not converge there: sources touch the box, see PLAN.md)
+    blob_fallback_r: float = 0.05     # mean-field correction acts on this sphere while there is no green voxel [m]
 
     # ---- patient/bed keep-out envelope: box centred at origin, no iron or ferrite inside ----
     env_x: float = 0.400              # PLACEHOLDER full width [m]
@@ -61,7 +68,7 @@ class Config:
     iter_max: int = 60
     kappa0: float = 0.1
     kappa_max: float = 1.0
-    kappa_min: float = 1e-3
+    kappa_min: float = 1e-3           # line search gives up below this fraction of the mass-capped step
     kappa_up: float = 1.5
     kappa_down: float = 0.6
     ls_max_tries: int = 10
@@ -77,13 +84,9 @@ class Config:
     mass_step_frac_f: float = 0.01    # same for ferrite, fraction of ferrite_ref_kg
     iron_ref_kg: float = 300.0        # PLACEHOLDER reference masses for the step caps (~ expected mass, full magnet)
     ferrite_ref_kg: float = 200.0     # PLACEHOLDER
-    w_misfit0: float = 1e3            # initial penalty weight on field misfit
-    w_grow: float = 1.5               # multiply when constraints violated
-    w_max: float = 1e8
-    w_shrink: float = 1.2             # divide when satisfied
-    harm_order: int = 6               # even harmonics of |B| in the DSV up to this degree get a Gauss-Newton correction
+    harm_order: int = 8               # |B| in the envelope is projected on the even harmonic polynomials up to this degree
     gn_max_solves: int = 3            # forward solves per trial (predictor + correctors)
-    gn_step_max: float = 0.3          # max trust radius: cap on the level-set shift per mode direction (psi, directions unit L2 norm)
+    gn_step_max: float = 0.3          # max trust radius: cap on the level-set shift along the mean-field direction (psi, directions unit L2 norm)
     gn_lm: float = 1e-2               # Levenberg-Marquardt damping, relative to mean diag(M^T M); adapted per iteration
     gn_fd_eps: float = 0.02           # level-set shift used to differentiate the cut ratios
     sens_eps: float = 0.03            # floor of the sensitivity scaling, in rms units
@@ -101,7 +104,6 @@ class Config:
 
     # ---- output ----
     results_dir: str = "results"
-    n_surface_pts: int = 600          # points on DSV octant surface for ppm metric
     viewer_h: float = 0.020           # marching-cubes grid spacing for viewer [m]
     slice_res: int = 120
 
@@ -113,3 +115,17 @@ class Config:
     def M_f(self):
         """Magnetization source of full ferrite, (Br_f / mu0) / mu_r_f [A/m]."""
         return self.Br_f * NU0 / self.mu_r_f
+
+    @property
+    def dB_band(self):
+        """Usable field band [T], from hardware: ISM band share or what the readout gradient can encode."""
+        return min(self.ism_fraction * self.ism_band, 2 * self.delta * self.dx_img * self.G_max)
+
+    @property
+    def band_limit(self):
+        return "ISM band" if self.ism_fraction * self.ism_band <= 2 * self.delta * self.dx_img * self.G_max else "G_max"
+
+    @property
+    def s_max(self):
+        """Largest tolerated |d|B|/dr| [T/m]."""
+        return self.kappa_s * self.dB_band / (2 * self.delta * self.dx_img)

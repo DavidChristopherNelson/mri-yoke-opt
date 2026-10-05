@@ -1,7 +1,7 @@
 """Adjoint sensitivities w.r.t. per-element iron and ferrite fractions (exact for the discretized problem).
-Misfit: J_f = ∫_dsv (|B|-B0)^2 dx / (B0^2 V_dsv).
-Modes:  a_k = ∫_dsv (|B|/B0) phi_k dx / V_dsv, phi_k an L2(dsv)-orthonormal basis of the even harmonic polynomials
-        (phi_0 = 1). rho = (a_0 - 1, a_1, ..., a_K) are the low-order field errors; |rho|^2 <= J_f.
+Modes: a_k = ∫_R |B| phi_k dx / V_R [T], R the projection region, phi_k the L2(R)-orthonormal even harmonic
+       polynomials (phi_0 = 1),
+       so that b(x) = sum_k a_k phi_k(x) is the projection of |B| the smooth voxel count works on.
 For any functional, with K λ = ∂J/∂A, K the (symmetric) Newton Jacobian:
   dJ/dcr_e   = -∫_e dnu/dcr   curl A · curl λ dx
   dJ/dcr_f_e = -∫_e dnu/dcr_f curl A · curl λ dx + p_e M_f ∫_e e_z · curl λ dx      (material + source term)
@@ -9,65 +9,33 @@ For any functional, with K λ = ∂J/∂A, K the (symmetric) Newton Jacobian:
 Every gradient is returned as (iron part, ferrite material part, S) with S_e = ∫_e e_z · curl λ dx, so the
 ferrite gradient can be re-formed for any polarity without another solve."""
 import numpy as np
-from ngsolve import LinearForm, GridFunction, InnerProduct, IfPos, curl, dx, Integrate, CoefficientFunction, TaskManager, x, y, z
+from ngsolve import LinearForm, GridFunction, InnerProduct, IfPos, curl, dx, Integrate, CoefficientFunction, TaskManager
 from .config import Config
-
-
-def even_harmonics(L):
-    """Harmonic polynomials even in x, y, z up to degree L, as lists of ((i, j, k), coef) for x^2i y^2j z^2k."""
-    out = []
-    for h in range(L // 2 + 1):
-        mono = [(i, j, h - i - j) for i in range(h + 1) for j in range(h + 1 - i)]
-        if h == 0:
-            out.append([(mono[0], 1.0)]); continue
-        low = {m: n for n, m in enumerate((i, j, h - 1 - i - j) for i in range(h) for j in range(h - i))}
-        lap = np.zeros((len(low), len(mono)))
-        for c, m in enumerate(mono):
-            for ax in range(3):
-                if m[ax] > 0:
-                    t = list(m); t[ax] -= 1
-                    lap[low[tuple(t)], c] += 2 * m[ax] * (2 * m[ax] - 1)
-        _, sv, vt = np.linalg.svd(lap)
-        for vec in vt[len(low):]:                         # null space of the Laplacian: h + 1 polynomials
-            out.append([(m, float(c)) for m, c in zip(mono, vec)])
-    return out
+from .imaging import EnvelopeBasis
 
 
 class Sensitivity:
     def __init__(self, mesh, ms, cfg: Config):
         self.mesh, self.ms, self.cfg = mesh, ms, cfg
-        self.V_dsv = Integrate(CoefficientFunction(1) * dx("dsv"), mesh)
+        self.region = "img" if cfg.proj_radius > 0 else "env"   # projection region
+        self.V_env = Integrate(CoefficientFunction(1) * dx(self.region), mesh)
         self.V_design = Integrate(CoefficientFunction(1) * dx("design"), mesh)
         nB = ms.normB
         safe = IfPos(nB - 1e-12, nB, 1e-12)
         self.dnB = 1 / safe * InnerProduct(ms.B, curl(ms.v))          # derivative of |B| in direction v
-        self.lf = LinearForm(ms.fes)
-        self.lf += 2 * (nB - cfg.B0) / (cfg.B0 ** 2 * self.V_dsv) * self.dnB * dx("dsv")
-        # orthonormal even harmonic basis on the DSV (Cholesky of the Gram matrix = Gram-Schmidt, phi_0 = 1)
-        R = cfg.dsv_radius
-        polys = [sum(c * (x / R) ** (2 * i) * (y / R) ** (2 * j) * (z / R) ** (2 * k) for (i, j, k), c in p)
-                 for p in even_harmonics(cfg.harm_order)]
-        n = len(polys)
-        gram = np.zeros((n, n))
-        for a in range(n):
-            for b in range(a + 1):
-                gram[a, b] = gram[b, a] = Integrate(polys[a] * polys[b] * dx("dsv", bonus_intorder=2 * cfg.harm_order),
-                                                    mesh) / self.V_dsv
-        Linv = np.linalg.inv(np.linalg.cholesky(gram))
-        self.phi = [sum(float(Linv[a, b]) * polys[b] for b in range(a + 1)) for a in range(n)]
+        self.basis = EnvelopeBasis(cfg)
+        self.phi = self.basis.cfs()
         self.lf_modes = []
         for p in self.phi:
             lf = LinearForm(ms.fes)
-            lf += p / (cfg.B0 * self.V_dsv) * self.dnB * dx("dsv", bonus_intorder=cfg.harm_order)
+            lf += p / self.V_env * self.dnB * dx(self.region, bonus_intorder=cfg.harm_order)
             self.lf_modes.append(lf)
 
     def modes(self):
-        """rho = (a_0 - 1, a_1, ..., a_K) at the current state."""
-        cfg = self.cfg
-        a = np.array([Integrate(self.ms.normB / cfg.B0 * p * dx("dsv", bonus_intorder=cfg.harm_order), self.mesh)
-                      for p in self.phi]) / self.V_dsv
-        a[0] -= 1.0
-        return a
+        """a_k [T] at the current state."""
+        with TaskManager():
+            a = [Integrate(self.ms.normB * p * dx(self.region, bonus_intorder=self.cfg.harm_order), self.mesh) for p in self.phi]
+        return np.array(a) / self.V_env
 
     def _grad(self, lf, reassemble):
         ms = self.ms
@@ -85,13 +53,9 @@ class Sensitivity:
         """Ferrite-fraction gradient(s) from the (.., 3, ne) output of the gradient routines, current polarity."""
         return g3[..., 1, :] + self.ms.pol.vec.FV().NumPy() * self.cfg.M_f * g3[..., 2, :]
 
-    def misfit_grad(self):
-        """(3, ne): dJ_f/dcr_e, material part of dJ_f/dcr_f_e, S_e."""
-        return self._grad(self.lf, True)
-
     def mode_grads(self):
-        """(K+1, 3, ne), same for the modes rho_k. Call after misfit_grad (reuses its Jacobian)."""
-        return np.array([self._grad(lf, False) for lf in self.lf_modes])
+        """(K, 3, ne): d a_k / d cr_e, material part of d a_k / d cr_f_e, S_e. One adjoint solve per mode, one Jacobian."""
+        return np.array([self._grad(lf, k == 0) for k, lf in enumerate(self.lf_modes)])
 
     def demag(self):
         """Demagnetisation gate. h_e = H·m in ferrite (pure-ferrite law, element-mean B): nu_f p B_z - M_f.
