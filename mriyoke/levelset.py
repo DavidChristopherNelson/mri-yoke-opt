@@ -30,6 +30,7 @@ class LevelSet:
         self.psi = GridFunction(self.fes, name="psi")
         self.psi_new = GridFunction(self.fes)
         self.g = GridFunction(self.fes, name="g")          # normalized update direction
+        self.gm = GridFunction(self.fes, name="gm")        # normalized mean-field sensitivity
         self.g_pwc = GridFunction(ms.pwc, name="sens")
         # element -> vertex index table
         self.ev = np.array([[v.nr for v in el.vertices] for el in mesh.Elements(VOL)], dtype=np.int64)
@@ -39,6 +40,7 @@ class LevelSet:
 
     def set_psi(self, cf):
         self.psi.Set(cf)
+        self.normalize_psi()
 
     @staticmethod
     def cut_fraction(vals):
@@ -71,20 +73,82 @@ class LevelSet:
             cr = self.ms.cr.vec.FV().NumPy()
         return float(np.sum(cr * self.vol_e))
 
-    def set_direction(self, g_elem):
-        """g_elem: per-element sensitivity density (dJ/d(cut ratio) per unit volume).
-        Projected to H1, normalized in L2 as in tutorial 7.6."""
+    def _norm(self, gf):
+        return np.sqrt(Integrate(gf * gf * dx("design"), self.mesh))
+
+    def _project(self, g_elem, gf):
+        """Per-element density -> H1, normalized in L2(design) as in tutorial 7.6."""
         ge = np.array(g_elem, dtype=np.float64)
         ge[~self.design_mask] = 0.0
         self.g_pwc.vec.FV().NumPy()[:] = ge
-        self.g.Set(self.g_pwc)
-        n = np.sqrt(Integrate(self.g * self.g * dx, self.mesh))
+        gf.Set(self.g_pwc)
+        n = self._norm(gf)
         if n > 0:
-            self.g.vec.data = (1.0 / n) * self.g.vec
+            gf.vec.data = (1.0 / n) * gf.vec
 
-    def trial_psi(self, kappa):
-        self.psi_new.vec.data = (1 - kappa) * self.psi.vec + kappa * self.g.vec
+    def normalize_psi(self):
+        n = self._norm(self.psi)
+        if n > 0:
+            self.psi.vec.data = (1.0 / n) * self.psi.vec
+
+    def set_directions(self, g_elem, G_modes):
+        """g_elem: per-element sensitivity density of the objective (dJ/d(cut ratio) per unit volume),
+        G_modes: (K+1, ne) same for the DSV field modes (directions of the Gauss-Newton correction).
+        All are multiplied by the same positive field s = (g^2 + G_0^2 + eps^2)^(-p/2) (each in rms units).
+        p < 1 compresses the range but keeps the most sensitive places first, which decides where iron nucleates.
+        Sensitivities near the DSV are orders of magnitude larger than far away; the scaling keeps the sign of
+        any combination g + sum mu_k G_k (the optimality condition) but lets the whole design domain move at
+        a comparable rate."""
+        m, vol = self.design_mask, self.vol_e
+        rms = lambda a: np.sqrt(np.sum(vol[m] * a[m] ** 2) / np.sum(vol[m])) or 1.0
+        ge = np.array(g_elem, dtype=np.float64); ge /= rms(ge)
+        g0 = G_modes[0] / rms(G_modes[0])
+        s = (ge ** 2 + g0 ** 2 + self.cfg.sens_eps ** 2) ** (-0.5 * self.cfg.sens_power)
+        self._project(s * ge, self.g)
+        self.g_np = self.g.vec.FV().NumPy().copy()
+        self.d_np = np.zeros((len(G_modes), len(self.g_np)))
+        for k, Gk in enumerate(G_modes):
+            self._project(s * Gk, self.gm)
+            self.d_np[k] = self.gm.vec.FV().NumPy()
+
+    def nodal_trial(self, kappa, nu):
+        return (1 - kappa) * self.psi.vec.FV().NumPy() + kappa * self.g_np + nu @ self.d_np
+
+    def cr_trial(self, kappa, nu):
+        cr = self.cut_fraction(self.nodal_trial(kappa, nu)[self.ev])
+        cr[~self.design_mask] = 0.0
+        return cr
+
+    def moved_volume(self, kappa, nu, cr_cur):
+        """Iron volume added plus iron volume removed (1/8 model) by the trial level set, no field solve."""
+        return float(np.sum(np.abs(self.cr_trial(kappa, nu) - cr_cur) * self.vol_e))
+
+    def kappa_cap(self, cr_cur, vol_cap, kappa_hi):
+        """Largest kappa <= kappa_hi whose fixed-point step moves at most vol_cap."""
+        nu = np.zeros(len(self.d_np))
+        if self.moved_volume(kappa_hi, nu, cr_cur) <= vol_cap:
+            return kappa_hi
+        lo, hi = 0.0, kappa_hi
+        for _ in range(30):
+            mid = 0.5 * (lo + hi)
+            lo, hi = (mid, hi) if self.moved_volume(mid, nu, cr_cur) <= vol_cap else (lo, mid)
+        return lo
+
+    def response(self, kappa, nu, G_modes, eps):
+        """M[k, j] = d rho_k / d nu_j at the trial level set, linear model: rho-sensitivity times the
+        (finite-difference) cut-ratio change of a shift along mode direction j. No field solves."""
+        base = self.nodal_trial(kappa, nu)
+        M = np.zeros((len(G_modes), len(self.d_np)))
+        for j, dj in enumerate(self.d_np):
+            dcr = (self.cut_fraction((base + eps * dj)[self.ev]) - self.cut_fraction((base - eps * dj)[self.ev])) / (2 * eps)
+            dcr[~self.design_mask] = 0.0
+            M[:, j] = G_modes @ dcr
+        return M
+
+    def trial_psi(self, kappa, nu):
+        self.psi_new.vec.FV().NumPy()[:] = self.nodal_trial(kappa, nu)
         return self.psi_new
 
     def accept(self):
         self.psi.vec.data = self.psi_new.vec
+        self.normalize_psi()

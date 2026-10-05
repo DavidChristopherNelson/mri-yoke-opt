@@ -1,0 +1,55 @@
+=== run 2026-10-04 06:58:06  Config(B0=0.159, mean_tol=0.001, ppm_max=400.0, dsv_radius=0.1, clearance=0.02, mag_x=0.3, mag_y=0.3, mag_t=0.05, gap=0.3, Br=1.3, mu_r_mag=1.05, design_L=0.45, air_L=1.0, k1=49.4, k2=1.46, k3=520.6, iron_density=7850.0, iron_cost_per_kg=2.0, maxh_air=0.1, maxh_design=0.022, maxh_dsv=0.0125, maxh_mag=0.02, fe_order=2, newton_maxit=25, newton_tol=1e-08, reg_eps=1e-08, linear_solver='bddc', verbose_newton=False, iter_max=250, kappa0=0.1, kappa_max=1.0, kappa_min=0.001, kappa_up=1.5, kappa_down=0.6, ls_max_tries=10, ls_refine_gain=0.05, dJ_rel_tol=0.0001, dJ_rel_count=5, init='empty', mass_step_frac=0.01, mass_step_ref_kg=300.0, w_misfit0=1000.0, w_grow=1.5, w_max=100000000.0, w_shrink=1.2, harm_order=6, gn_max_solves=3, gn_step_max=0.3, gn_lm=0.01, gn_fd_eps=0.02, sens_eps=0.03, sens_power=0.5, ls_max_fails=3, plate_t=0.04, post_t=0.05, pole_t=0.01, results_dir='results/fine', n_surface_pts=600, viewer_h=0.02, slice_res=120)
+mesh: 49346 elements, 9524 vertices (2.9s)
+HCurl order 2: 263348 dofs
+[it   0] meanB= 123.872 mT  ppm= 562834.4  iron=     0.0 kg  moved= 0.00 kg  J=5.9329e+01  w=1.00e+03  kappa=0.100  ok=False  (3s)
+    try kappa=0.1241: J=5.7430e+01 (cur 8.8994e+01) meanB=130.83 ppm=467201 iron=3kg |nu|=7.65e-03
+    try kappa=0.0745: J=6.8921e+01 (cur 8.8994e+01) meanB=126.45 ppm=513150 iron=3kg |nu|=3.21e-02
+[it   1] meanB= 130.831 mT  ppm= 467201.2  iron=     3.0 kg  moved= 3.00 kg  J=5.7430e+01  w=1.50e+03  kappa=0.186  ok=False  (88s)
+    try kappa=0.0060: J=6.8161e+01 (cur 8.6144e+01) meanB=135.62 ppm=627896 iron=4kg |nu|=2.85e-02
+    try kappa=0.0036: J=6.5960e+01 (cur 8.6144e+01) meanB=136.04 ppm=639176 iron=4kg |nu|=2.80e-02
+[it   2] meanB= 136.036 mT  ppm= 639176.0  iron=     4.0 kg  moved= 3.00 kg  J=6.5960e+01  w=2.25e+03  kappa=0.005  ok=False  (116s)
+    try kappa=0.0054: J=7.1513e+01 (cur 9.8940e+01) meanB=139.25 ppm=661939 iron=6kg |nu|=3.99e-02
+    try kappa=0.0032: J=7.1779e+01 (cur 9.8940e+01) meanB=139.07 ppm=653017 iron=6kg |nu|=4.16e-02
+[it   3] meanB= 139.246 mT  ppm= 661939.0  iron=     5.9 kg  moved= 3.00 kg  J=7.1513e+01  w=3.38e+03  kappa=0.008  ok=False  (106s)
+    try kappa=0.0078: J=8.9299e+01 (cur 1.0727e+02) meanB=141.41 ppm=616043 iron=8kg |nu|=1.54e-02
+    try kappa=0.0047: J=9.6405e+01 (cur 1.0727e+02) meanB=140.65 ppm=616178 iron=7kg |nu|=1.69e-02
+[it   4] meanB= 141.406 mT  ppm= 616043.3  iron=     7.7 kg  moved= 3.00 kg  J=8.9299e+01  w=5.06e+03  kappa=0.012  ok=False  (96s)
+    try kappa=0.0051: J=1.1338e+02 (cur 1.3395e+02) meanB=143.55 ppm=522892 iron=10kg |nu|=8.64e-03
+    try kappa=0.0030: J=1.2802e+02 (cur 1.3395e+02) meanB=142.46 ppm=506039 iron=9kg |nu|=1.06e-02
+[it   5] meanB= 143.553 mT  ppm= 522892.1  iron=     9.7 kg  moved= 3.00 kg  J=1.1338e+02  w=7.59e+03  kappa=0.008  ok=False  (65s)
+    try kappa=0.0033: J=1.2845e+02 (cur 1.7007e+02) meanB=146.26 ppm=420658 iron=12kg |nu|=4.94e-03
+    try kappa=0.0020: J=1.3884e+02 (cur 1.7007e+02) meanB=145.72 ppm=399911 iron=12kg |nu|=6.30e-03
+[it   6] meanB= 146.256 mT  ppm= 420657.6  iron=    12.2 kg  moved= 3.00 kg  J=1.2845e+02  w=1.14e+04  kappa=0.005  ok=False  (64s)
+    try kappa=0.0029: J=1.3884e+02 (cur 1.9268e+02) meanB=148.81 ppm=407240 iron=15kg |nu|=4.37e-03
+    try kappa=0.0018: J=1.4815e+02 (cur 1.9268e+02) meanB=148.39 ppm=400301 iron=15kg |nu|=5.69e-03
+[it   7] meanB= 148.810 mT  ppm= 407240.2  iron=    15.0 kg  moved= 3.00 kg  J=1.3884e+02  w=1.71e+04  kappa=0.004  ok=False  (76s)
+    try kappa=0.0026: J=1.4249e+02 (cur 2.0826e+02) meanB=151.27 ppm=401074 iron=18kg |nu|=3.76e-03
+    try kappa=0.0016: J=1.4981e+02 (cur 2.0826e+02) meanB=150.91 ppm=392736 iron=18kg |nu|=4.98e-03
+[it   8] meanB= 151.273 mT  ppm= 401073.8  iron=    17.9 kg  moved= 3.00 kg  J=1.4249e+02  w=2.56e+04  kappa=0.004  ok=False  (114s)
+    try kappa=0.0025: J=1.3870e+02 (cur 2.1374e+02) meanB=153.51 ppm=374836 iron=21kg |nu|=3.35e-03
+    try kappa=0.0015: J=1.4360e+02 (cur 2.1374e+02) meanB=153.15 ppm=364365 iron=21kg |nu|=4.45e-03
+[it   9] meanB= 153.511 mT  ppm= 374836.3  iron=    20.9 kg  moved= 3.00 kg  J=1.3870e+02  w=3.84e+04  kappa=0.004  ok=False  (88s)
+    try kappa=0.0025: J=1.3403e+02 (cur 2.0805e+02) meanB=155.49 ppm=343635 iron=24kg |nu|=3.08e-03
+    try kappa=0.0015: J=1.3780e+02 (cur 2.0805e+02) meanB=155.17 ppm=337889 iron=24kg |nu|=4.15e-03
+[it  10] meanB= 155.490 mT  ppm= 343635.0  iron=    23.8 kg  moved= 3.00 kg  J=1.3403e+02  w=5.77e+04  kappa=0.004  ok=False  (108s)
+    try kappa=0.0027: J=1.3725e+02 (cur 2.0105e+02) meanB=157.28 ppm=320062 iron=27kg |nu|=2.95e-03
+    try kappa=0.0016: J=1.3917e+02 (cur 2.0105e+02) meanB=156.98 ppm=313684 iron=27kg |nu|=3.95e-03
+[it  11] meanB= 157.277 mT  ppm= 320062.2  iron=    26.7 kg  moved= 3.00 kg  J=1.3725e+02  w=8.65e+04  kappa=0.004  ok=False  (78s)
+    try kappa=0.0028: J=1.4128e+02 (cur 2.0587e+02) meanB=158.51 ppm=289227 iron=29kg |nu|=3.62e-03
+    try kappa=0.0017: J=1.4143e+02 (cur 2.0587e+02) meanB=158.26 ppm=289526 iron=29kg |nu|=4.35e-03
+[it  12] meanB= 158.512 mT  ppm= 289226.5  iron=    29.5 kg  moved= 3.00 kg  J=1.4128e+02  w=1.30e+05  kappa=0.004  ok=False  (154s)
+    try kappa=0.0035: J=1.5089e+02 (cur 2.1191e+02) meanB=158.84 ppm=271583 iron=32kg |nu|=3.87e-03
+    try kappa=0.0021: J=1.5579e+02 (cur 2.1191e+02) meanB=158.80 ppm=276203 iron=32kg |nu|=4.33e-03
+[it  13] meanB= 158.836 mT  ppm= 271582.8  iron=    32.2 kg  moved= 3.00 kg  J=1.5089e+02  w=1.95e+05  kappa=0.005  ok=False  (83s)
+    try kappa=0.0037: J=2.4491e+02 (cur 2.2634e+02) meanB=159.09 ppm=307474 iron=35kg |nu|=4.89e-03
+    try kappa=0.0022: J=2.5240e+02 (cur 2.2634e+02) meanB=159.03 ppm=308980 iron=35kg |nu|=4.69e-03
+    try kappa=0.0013: J=2.5570e+02 (cur 2.2634e+02) meanB=159.00 ppm=309046 iron=35kg |nu|=4.52e-03
+[it 14] no descent step found (kappa=8.08e-04); retrying with more damping (lm=1.0e-04)
+    try kappa=0.0037: J=3.6776e+02 (cur 3.3950e+02) meanB=159.09 ppm=307767 iron=35kg |nu|=4.88e-03
+    try kappa=0.0022: J=3.7883e+02 (cur 3.3950e+02) meanB=159.03 ppm=309125 iron=35kg |nu|=4.68e-03
+    try kappa=0.0013: J=3.8367e+02 (cur 3.3950e+02) meanB=159.00 ppm=309105 iron=35kg |nu|=4.50e-03
+[it 15] no descent step found (kappa=8.08e-04); retrying with more damping (lm=1.0e-03)
+    try kappa=0.0037: J=5.5099e+02 (cur 5.0925e+02) meanB=159.07 ppm=307930 iron=35kg |nu|=4.69e-03
+    try kappa=0.0022: J=5.7173e+02 (cur 5.0925e+02) meanB=159.01 ppm=310493 iron=35kg |nu|=4.60e-03
+    try kappa=0.0013: J=5.7745e+02 (cur 5.0925e+02) meanB=158.98 ppm=309626 iron=35kg |nu|=4.41e-03
+[it 16] no descent step found (kappa=8.08e-04); stopping

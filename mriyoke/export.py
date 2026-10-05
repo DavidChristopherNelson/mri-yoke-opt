@@ -149,7 +149,7 @@ def write_history_png(hist, cfg: Config, path):
     axs[0, 0].semilogy(it, [h["ppm"] for h in hist], "o-"); axs[0, 0].axhline(cfg.ppm_max, c="r", ls="--"); axs[0, 0].set_title("(max-min)/mean [ppm]")
     axs[0, 1].plot(it, [h["mean_B"] * 1e3 for h in hist], "o-"); axs[0, 1].axhline(cfg.B0 * 1e3, c="r", ls="--"); axs[0, 1].set_title("mean |B| on DSV surface [mT]")
     axs[1, 0].plot(it, [h["iron_kg"] for h in hist], "o-"); axs[1, 0].set_title("iron mass, full magnet [kg]")
-    axs[1, 1].semilogy(it, [h["J"] for h in hist], "o-", label="J"); axs[1, 1].semilogy(it, [h["w"] for h in hist], "s--", label="w"); axs[1, 1].legend(); axs[1, 1].set_title("objective / penalty weight")
+    axs[1, 1].semilogy(it, [h["J"] for h in hist], "o-", label="J"); axs[1, 1].semilogy(it, [h["w"] for h in hist], "s--", label="w"); axs[1, 1].semilogy(it, [h["f"] for h in hist], "^-", label="misfit f"); axs[1, 1].legend(); axs[1, 1].set_title("objective J = w f + c / penalty weight / misfit")
     for a in axs.ravel():
         a.set_xlabel("iteration"); a.grid(alpha=.3)
     fig.tight_layout(); fig.savefig(path, dpi=110); plt.close(fig)

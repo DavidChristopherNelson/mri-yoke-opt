@@ -80,6 +80,38 @@ Coarse laptop mesh (~100k elements, order 2) for all development. Production (fe
 - Linear solver: CG + BDDC (tutorial 2.4); direct sparsecholesky also works. Newton residual is projected onto free dofs (otherwise Dirichlet-dof residual masks convergence).
 - Coarse mesh (~20k tets, order 2, ~100k dofs): discretization error ~1e4 ppm, so the 400 ppm target is NOT resolvable on this mesh. Coarse runs validate the pipeline and the topology trend only.
 
+## 8c. Optimizer fixes (2026-10-03)
+
+First coarse run (commit e3d2940) did not work: mean B flipped 125 ↔ 190 mT every iteration, κ collapsed to 1e-3, penalty weight ran to its cap, ppm stuck at 2.4e5. Adjoint gradient was checked against finite differences and is correct; the causes were in the formulation:
+
+1. **Material mix in cut elements (default not sufficient here)**: tutorial 7.6 mixes the coefficient linearly with the cut ratio. For ν with iron/air contrast ~1400 that makes a half-filled element air-like (μr ≈ 2) and squeezes the whole transition into cr > 0.99: the response to a moving interface is extremely nonlinear (FD check at δcr = 1e-2 was 35 % off the gradient). Now geometric mix ν = ν0^(1−cr) · ν_iron^cr (FD at 1e-2 within 6 %; cold Newton 8 its instead of 11 heavily damped).
+2. **Stiff field modes**: misfit ≈ Σ (low-order harmonic coefficients of |B| in the DSV)²; mean, z², … are each far stiffer than the rest of the design space, so the plain fixed-point step zigzags. Now a Gauss–Newton correction rides on the tutorial update: ψ_new = (1−κ)ψ + κ g + Σ_k ν_k d_k. d_k = sensitivity of mode k (one extra adjoint solve each, same Jacobian), mode basis = L2(DSV)-orthonormal even harmonic polynomials up to degree `harm_order` (6 → 10 modes; they hold > 99.9 % of the initial misfit). ν from a damped least-squares on a linear model (mode sensitivities × finite-difference cut-ratio response, no field solve), then corrected with the true mode errors after each forward solve (≤ `gn_max_solves`); a step that does not improve J halves the trust radius on ν. LM damping and trust radius adapted per iteration. `harm_order` 8 was tried on the coarse mesh: stable, not better (117 DSV elements do not resolve those modes); 6 is the default.
+3. **Sensitivity scaling**: sensitivities near the DSV are orders of magnitude larger than at the return yoke. All directions are multiplied by one positive field s = 1/√(ĝ² + ĝ_mean² + ε²) (sign of the optimality condition unchanged), ψ re-normalized in L2(design) after each accepted step.
+4. **Line search**: tutorial rule (first decrease after ×0.8 backtracking) lands at the break-even step on the far wall of the valley. Now backtrack ×0.6 to the first decrease, then keep shrinking while J improves; ×1.5 growth after acceptance. A failed line search raises the LM damping and retries (stop after `ls_max_fails`).
+
+5. **Newton stop test**: convergence was relative to the warm-start residual. After a small design change that residual is already near round-off, so the 1e-8 drop was unreachable and the solve burned all 25 Newton × 400 CG iterations. Now relative to the source residual (A = 0). Non-converged solves reject the trial.
+
+Result on the same coarse mesh (`results/coarse`, stops at iteration 22 after 3 failed line searches, last accepted = 19, ~20 s/iteration once near the optimum):
+
+| | old run (it 35) | new run (it 19) |
+|---|---|---|
+| mean \|B\| on DSV surface | 159.2 mT, oscillating | 159.02 mT, inside ±1 mT from it 4 |
+| normalized misfit f | 6.4e-4 | 1.2e-5 |
+| (max−min)/mean on surface | 2.5e5 ppm | 5.7e4 ppm |
+| low-order mode error ‖ρ‖ | – | 1e-4 |
+| iron | 179 kg | 222 kg |
+
+What is left is not low-order: degree ≤ 6 content of the final field is ~2e3 ppm (20-iteration check run); the rest is degree ≥ 8 content from iron 20 mm off the DSV surface plus mesh noise (5e3–1e4 ppm even at r = 0.5 R). 400 ppm remains out of reach of this mesh (see 8b), and with the placeholder geometry (200 mm DSV in a 300 mm gap) it may be out of reach physically. Next levers: finer DSV/near-DSV mesh, then higher `harm_order`, larger `clearance`. Cost only acts as a tie-breaker while the ppm constraint is violated (w grows every iteration).
+
+Other: objective is again the misfit about B0 (so the mean is one of the corrected modes); `psi_final.npy` saved per run.
+
+## 8d. Slow build-up from no iron (2026-10-04)
+
+- Initial design: no iron (ψ = const > 0). First step nucleates iron where the (range-compressed, `sens_power` = 0.5) sensitivity is most negative; scaling exponent < 1 keeps the ranking so iron appears where it is most effective.
+- Step cap: per step, iron added + iron removed ≤ `mass_step_frac` × `mass_step_ref_kg` (1 % × 300 kg = 3 kg, full magnet). 1 % of the *current* mass is undefined from zero iron, hence the fixed reference (placeholder). Enforced without field solves: κ limited by bisection on the cut-ratio change (half the budget), Gauss–Newton shift scaled to the remainder.
+- Coarse check (12 its): mean 124 → 158.4 mT in 10 steps at exactly 3 kg/step, then homogeneity starts falling; iron forms as pole pieces + back plates first.
+- `scripts/run_fine.py`: maxh design/DSV/magnet/air = 22/12.5/20/100 mm → 49k tets, 263k dofs, ~15 s per forward solve (coarse ~3–5 s), ~1–2 min per iteration. Net growth ~2 kg/step (3 kg moved), so ≥ 100 iterations to place ~220 kg; estimate 4–6 h total, hard cap 250 iterations.
+
 ## 9. Open questions
 
 1. DSV diameter (placeholder 200 mm)?

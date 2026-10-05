@@ -23,10 +23,13 @@ def dsv_metrics(mesh, ms, cfg: Config, pts=None):
     Bz = np.asarray(ms.B[2](mp)).ravel()
     mean = nB.mean()
     ppm = (nB.max() - nB.min()) / mean * 1e6
-    vol_mis = Integrate((ms.normB - cfg.B0) ** 2 * dx("dsv"), mesh)
     vol = Integrate(CoefficientFunction(1) * dx("dsv"), mesh)
+    mean_vol = Integrate(ms.normB * dx("dsv"), mesh) / vol
+    vol_mis = Integrate((ms.normB - cfg.B0) ** 2 * dx("dsv"), mesh)
+    vol_var = Integrate((ms.normB - mean_vol) ** 2 * dx("dsv"), mesh)
     return dict(mean_B=mean, ppm=ppm, Bz_mean=Bz.mean(), min_B=nB.min(), max_B=nB.max(),
-                misfit=vol_mis / (cfg.B0 ** 2 * vol), n_pts=len(pts))
+                misfit=vol_mis / (cfg.B0 ** 2 * vol), mean_vol=mean_vol, var=vol_var / (cfg.B0 ** 2 * vol),
+                n_pts=len(pts))
 
 
 def iron_mass_full(v_octant, cfg: Config):

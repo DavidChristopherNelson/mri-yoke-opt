@@ -49,21 +49,38 @@ class Config:
     newton_tol: float = 1e-8
     reg_eps: float = 1e-8             # regularisation eps*nu0*(u,v), NGSolve tutorial 2.4
     linear_solver: str = "bddc"
+    verbose_newton: bool = False      # log every Newton iteration of every forward solve
 
     # ---- optimisation (NGSolve tutorial 7.6 pattern) ----
     iter_max: int = 60
     kappa0: float = 0.1
     kappa_max: float = 1.0
     kappa_min: float = 1e-3
-    kappa_up: float = 1.1
-    kappa_down: float = 0.8
+    kappa_up: float = 1.5
+    kappa_down: float = 0.6
     ls_max_tries: int = 10
+    ls_refine_gain: float = 0.05      # keep shrinking kappa after the first decrease only while J improves by this fraction
     dJ_rel_tol: float = 1e-4
     dJ_rel_count: int = 5
+    time_budget_h: float = 0.0        # stop cleanly (checkpoint saved) before this much wall time is used; 0 = no limit
+    threads: int = 0                  # NGSolve TaskManager threads; 0 = all (set when several runs share a machine)
+    run_history: str = "results/run_history.csv"   # one row per finished run: size, machine, timing; feeds the ETA
+    resume: str = ""                  # path to psi_latest.npy / psi_final.npy of an earlier run on the same mesh
+    init: str = "empty"               # initial design: "empty" (no iron, yoke is built up) or "hframe" (plate + post + pole guess)
+    mass_step_frac: float = 0.01      # per step, iron added + iron removed <= this fraction of mass_step_ref_kg
+    mass_step_ref_kg: float = 300.0   # PLACEHOLDER reference mass for the step cap (~ expected yoke mass, full magnet)
     w_misfit0: float = 1e3            # initial penalty weight on field misfit
     w_grow: float = 1.5               # multiply when constraints violated
     w_max: float = 1e8
     w_shrink: float = 1.2             # divide when satisfied
+    harm_order: int = 6               # even harmonics of |B| in the DSV up to this degree get a Gauss-Newton correction
+    gn_max_solves: int = 3            # forward solves per trial (predictor + correctors)
+    gn_step_max: float = 0.3          # max trust radius: cap on the level-set shift per mode direction (psi, directions unit L2 norm)
+    gn_lm: float = 1e-2               # Levenberg-Marquardt damping, relative to mean diag(M^T M); adapted per iteration
+    gn_fd_eps: float = 0.02           # level-set shift used to differentiate the cut ratios
+    sens_eps: float = 0.03            # floor of the sensitivity scaling, in rms units
+    sens_power: float = 0.5           # scaling exponent: 1 = all regions move alike, 0 = raw sensitivity; < 1 keeps the ranking
+    ls_max_fails: int = 3             # consecutive failed line searches before stopping
 
     # ---- initial iron guess: back plate + posts + pole plate (1/8 octant boxes) ----
     plate_t: float = 0.040
