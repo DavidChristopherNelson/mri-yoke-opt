@@ -79,7 +79,13 @@ class Config:
     threads: int = 0                  # NGSolve TaskManager threads; 0 = all (set when several runs share a machine)
     run_history: str = "results/run_history.csv"   # one row per finished run: size, machine, timing; feeds the ETA
     resume: str = ""                  # path to psi_latest.npy / psi_final.npy of an earlier run on the same mesh
-    init: str = "hframe"              # initial design: "hframe" (iron plate + post + pole, ferrite slab) or "empty" (no field without ferrite: test only)
+    init: str = "hframe"              # initial design: "hframe[:thin|medium|thick]" (iron plate + post + pole, ferrite slab of
+                                      #   30 / 50 / 80 mm; plain "hframe" uses slab_t), "noise:<seed>" (blurred-noise iron and
+                                      #   ferrite), "empty" (nothing: no field, test only)
+    h_seed: float = 0.010             # noise seeds: pitch of the noise grid [m]
+    ell_seed: float = 0.040           #   correlation length of the Gaussian blur [m]
+    seed_iron_frac: float = 0.20      #   iron volume fraction of the design box
+    seed_ferrite_frac: float = 0.10   #   ferrite volume fraction (ferrite wins overlaps)
     mass_step_frac_fe: float = 0.01   # per step, iron added + iron removed <= this fraction of iron_ref_kg
     mass_step_frac_f: float = 0.01    # same for ferrite, fraction of ferrite_ref_kg
     iron_ref_kg: float = 300.0        # PLACEHOLDER reference masses for the step caps (~ expected mass, full magnet)

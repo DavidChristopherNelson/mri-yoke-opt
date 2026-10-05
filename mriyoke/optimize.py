@@ -7,7 +7,7 @@ from ngsolve import CoefficientFunction
 from .config import Config
 from .geometry import build_mesh
 from .physics import Magnetostatics
-from .levelset import Design, initial_psi_cf
+from .levelset import Design, initial_psi_cf, noise_nodal
 from .sensitivity import Sensitivity
 from .imaging import Imaging
 from .metrics import masses_full, costs_full
@@ -193,7 +193,8 @@ class Optimizer:
         label = (f"iter {it}   F {m['F']:.4g} $/voxel   N_green {m['N_green']}   mean B {m['blob_mean']*1e3:.2f} mT   "
                  f"iron {m['iron_kg']:.1f} kg   ferrite {m['ferrite_kg']:.1f} kg   ${m['cost']:.0f}   demag {m['demag_frac']:.2f}")
         export.write_vtk(self.mesh, self.ms, des, os.path.join(cfg.results_dir, tag))
-        export.write_slice_png(self.mesh, self.ms, des, cfg, os.path.join(cfg.results_dir, tag + ".png"), title=label)
+        export.write_slice_png(self.mesh, self.ms, des, cfg, os.path.join(cfg.results_dir, tag + ".png"),
+                               title=label.replace("$", r"\$"))
         self.fields = export.sample_design(self.mesh, self.ms, des, cfg)
         meshes = export.frame_from_fields(self.fields, cfg)
         meshes["gr"] = export.green_surface(self.blob, cfg)
@@ -214,9 +215,20 @@ class Optimizer:
 
     def initial_design(self):
         cfg, des, ms = self.cfg, self.des, self.ms
-        one = CoefficientFunction(1)
-        psi, psi_f = initial_psi_cf(cfg) if cfg.init == "hframe" else (one, one)
-        des.fe.set_psi(psi); des.f.set_psi(psi_f)
+        kind, _, arg = cfg.init.partition(":")
+        if kind == "noise":
+            coords = np.array([v.point for v in self.mesh.vertices])
+            for ls, nodal in zip((des.fe, des.f), noise_nodal(cfg, int(arg or 0), coords)):
+                ls.psi.vec.FV().NumPy()[:] = nodal; ls.normalize_psi()
+            self.log(f"noise seed {int(arg or 0)}: pitch {cfg.h_seed} m, correlation length {cfg.ell_seed} m, "
+                     f"{cfg.seed_iron_frac:.0%} iron, {cfg.seed_ferrite_frac:.0%} ferrite")
+        elif kind == "hframe":
+            if arg:
+                cfg.slab_t = {"thin": 0.030, "medium": 0.050, "thick": 0.080}[arg]
+            psi, psi_f = initial_psi_cf(cfg)
+            des.fe.set_psi(psi); des.f.set_psi(psi_f)
+        else:
+            des.fe.set_psi(CoefficientFunction(1)); des.f.set_psi(CoefficientFunction(1))
         if cfg.resume:                                         # psi_<tag>.npy of an earlier run on the same mesh (+ psif_, pol_)
             d, name = os.path.split(cfg.resume)
             des.fe.psi.vec.FV().NumPy()[:] = np.load(cfg.resume); des.fe.normalize_psi()
@@ -233,6 +245,13 @@ class Optimizer:
         t = time.time()
         m = self.evaluate()
         self.count(m)
+        if cfg.init.startswith("noise") and not cfg.resume:    # polarity of every element from one forward + adjoint solve
+            self.set_widths(0, m)
+            self.gradients(m, all_polarities=True)
+            pol = ms.pol.vec.FV().NumPy()
+            self.log(f"polarities set from the adjoint: {np.mean(pol[ms.design_mask] > 0):.0%} of the design elements +z")
+            m = self.evaluate()
+            self.count(m)
         kappa = cfg.kappa0
         self.set_widths(0, m)
         J = self.objective(m)
@@ -305,6 +324,7 @@ class Optimizer:
                 self.log(f"[it {it}] relative change < {cfg.dJ_rel_tol} for {stall} steps; stopping")
                 stop = "converged"; break
         self.save("final")
+        np.save(os.path.join(cfg.results_dir, "mask_final.npy"), export.material_mask(self.fields))   # for multistart IoU
         with open(os.path.join(cfg.results_dir, "config.json"), "w") as f:
             json.dump(self.cfg.__dict__, f, indent=1)
         self.log(f"finished: {stop} after {last_it} iterations, {self.clock.elapsed() / 3600:.2f} h, {self.n_solves} field solves")

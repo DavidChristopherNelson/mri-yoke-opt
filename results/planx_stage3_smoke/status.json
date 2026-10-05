@@ -1,0 +1,20 @@
+{
+ "state": "finished: iter_max",
+ "it": 2,
+ "iter_max": 2,
+ "started": "Mon 20:35",
+ "elapsed_h": 0.03237607412868076,
+ "s_per_it": 27.540167093276978,
+ "expected_its": null,
+ "eta_expected": null,
+ "eta_latest": "Mon 20:37",
+ "deadline": null,
+ "mean_mT": 6.058764667878096,
+ "N_green": 0,
+ "F": Infinity,
+ "iron_kg": 881.2030912691515,
+ "ferrite_kg": 266.5657281371047,
+ "solves": 6,
+ "tries": 4,
+ "updated": "2026-10-05 20:37:47"
+}

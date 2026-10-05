@@ -1,5 +1,5 @@
 """Fine-mesh run (~5x the cost per solve of run_coarse.py). Same outputs, in results/fine by default.
-Start from no iron; each step moves at most mass_step_frac * mass_step_ref_kg of iron."""
+Each step moves at most 1 % of the reference iron and ferrite masses (Config mass_step_frac_*, *_ref_kg)."""
 import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mriyoke.config import Config

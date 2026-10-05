@@ -2,6 +2,7 @@
 Two level sets: psi < 0 <=> iron, psi_f < 0 <=> ferrite (ferrite wins where both claim an element).
 Cut ratio = exact volume fraction of {psi<0} in each tet for linear psi."""
 import numpy as np
+from scipy import ndimage
 from ngsolve import H1, GridFunction, CoefficientFunction, IfPos, x, y, z, VOL, Integrate, dx
 from .config import Config
 
@@ -33,6 +34,26 @@ def initial_psi_cf(cfg: Config):
     iron = -_max(_max(-back, -post), -pole)                # union
     slab = _box_sd(cfg.slab_x / 2, cfg.slab_y / 2, cfg.slab_z0, cfg.z_slab1)
     return iron, slab
+
+
+def noise_nodal(cfg: Config, seed, coords):
+    """Noise seed: nodal values of (psi, psi_f) at the mesh vertices coords (nv, 3).
+    Two independent white-noise fields on a regular grid of pitch h_seed over the design box, Gaussian-blurred
+    with correlation length ell_seed, each thresholded at the quantile (over the grid points outside the envelope)
+    that gives the wanted volume fraction. The level-set function is the blurred field minus its threshold,
+    interpolated to the vertices. Deterministic for a given seed."""
+    h = cfg.h_seed
+    n = int(round(cfg.design_L / h)) + 1
+    ax = np.arange(n) * h
+    X, Y, Z = np.meshgrid(ax, ax, ax, indexing="ij")
+    design = ~((X <= cfg.env_x / 2) & (Y <= cfg.env_y / 2) & (Z <= cfg.env_z / 2))
+    rng = np.random.default_rng(seed)
+    out = []
+    for frac in (cfg.seed_iron_frac, cfg.seed_ferrite_frac):
+        f = ndimage.gaussian_filter(rng.standard_normal((n, n, n)), sigma=cfg.ell_seed / h, mode="reflect")
+        psi = (np.quantile(f[design], 1 - frac) - f) / f.std()                 # negative in the top `frac` of the field
+        out.append(ndimage.map_coordinates(psi, (coords / h).T, order=1, mode="nearest"))
+    return out
 
 
 class LevelSet:
