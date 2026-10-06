@@ -148,9 +148,10 @@ class Imaging:
         return float(logN), grad
 
     def _sel(self, blob):
-        """Blob voxels inside the projection region (as a mask over self.proj); fallback sphere if there are none."""
+        """Blob voxels inside the projection region (as a mask over self.proj); fallback sphere if there are fewer
+        than blob_min_voxels of them (a voxel or two at the band edge is noise, not an anchor)."""
         sel = blob.ravel()[self.proj]
-        return sel if sel.any() else self.fallback
+        return sel if sel.sum() >= self.cfg.blob_min_voxels else self.fallback
 
     def blob_coefs(self, blob):
         """c with (mean of the projection b over the blob voxels) = c . a."""

@@ -23,6 +23,8 @@ class Config:
     anneal_iters: int = 100           #   over this many iterations
     proj_radius: float = 0.10         # the polynomial projection and the smooth count live in this sphere (own mesh region);
                                       #   0 = whole envelope box (does not converge there: sources touch the box, see PLAN.md)
+    width_shrink_max: float = 1.5     # the smooth count's sigmoid widths shrink by at most this factor per iteration
+    blob_min_voxels: int = 8          # smaller green blobs (inside the projection sphere) do not anchor the mean-field correction
     blob_fallback_r: float = 0.05     # mean-field correction acts on this sphere while there is no green voxel [m]
 
     # ---- patient/bed keep-out envelope: box centred at origin, no iron or ferrite inside ----

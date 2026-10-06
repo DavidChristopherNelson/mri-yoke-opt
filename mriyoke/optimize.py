@@ -46,13 +46,17 @@ class Optimizer:
     def set_widths(self, it, m):
         """Sigmoid widths of the smooth count: geometric continuation from anneal_start to anneal_end (fractions of
         dB_band and s_max), but the band width is never narrower than the present rms deviation of the projected
-        field from B_c over the blob, and the slope width is widened by the same factor. Far from the band a
-        narrow sigmoid sees only the single closest voxel; the floor keeps the count a smooth function of the
-        whole blob (with the band and slope tests weighted as in the sharp count) until the field is in the band,
-        then the schedule takes over."""
+        field from B_c over the blob, never shrinks by more than a factor width_shrink_max per iteration, and the
+        slope width is widened by the same factor. Far from the band a narrow sigmoid sees only the single closest
+        voxel; the floor keeps the count a smooth function of the whole blob (with the band and slope tests
+        weighted as in the sharp count) until the field is in the band; the shrink limit keeps J from turning
+        stiff in one step when the mean-field correction lands in the band at once."""
         cfg = self.cfg
         r = cfg.anneal_start * (cfg.anneal_end / cfg.anneal_start) ** (min(it, cfg.anneal_iters) / max(cfg.anneal_iters, 1))
-        self.w_b = max(r * cfg.dB_band, self.img.spread(m["a"], self.blob))
+        w = max(r * cfg.dB_band, self.img.spread(m["a"], self.blob))
+        if hasattr(self, "w_b"):
+            w = max(w, self.w_b / cfg.width_shrink_max)
+        self.w_b = w
         self.w_s = self.w_b * cfg.s_max / cfg.dB_band
 
     def evaluate(self):
@@ -104,8 +108,9 @@ class Optimizer:
         d ln N_s / d cr = sum_k (d ln N_s / d a_k) (d a_k / d cr), one adjoint solve per mode.
         Also updates the magnetization directions: dJ/dm_e = cr_f M_f S_e, so the best direction is -S_e/|S_e|.
         Elements without ferrite take it outright (ferrite nucleates with its best direction); elements with
-        ferrite turn towards it by at most self.rot (<= dir_rot_max) per step, a change of the design that the
-        line search evaluates together with the level-set step and reverts if the step fails."""
+        ferrite turn towards it (rotate(), called by every trial with the line-search fraction) by at most
+        self.rot (<= dir_rot_max), a change of the design that the line search scales together with the
+        level-set step and reverts if the step fails."""
         cfg, ms, sens = self.cfg, self.ms, self.sens
         Gm = sens.mode_grads()
         _, dlogN = self.img.log_count(m["a"], self.w_b, self.w_s)
@@ -119,17 +124,12 @@ class Optimizer:
         self.m_backup = mdir.copy()
         nS = np.linalg.norm(S, axis=1)
         ok = nS > 0
-        best = np.where(ok[:, None], -S / np.where(ok, nS, 1.0)[:, None], mdir)
+        self.m_best = np.where(ok[:, None], -S / np.where(ok, nS, 1.0)[:, None], mdir)
         free = (crf < 1e-9) & ok
-        mdir[free] = best[free]
-        turn = ~free & ok & (crf > 0)
-        cosang = np.clip(np.sum(mdir[turn] * best[turn], axis=1), -1.0, 1.0)
-        ang = np.arccos(cosang)
-        f = np.minimum(1.0, self.rot / np.maximum(ang, 1e-12))[:, None]     # slerp fraction
-        sa = np.sin(ang)[:, None]
-        rot = np.where(sa > 1e-9, (np.sin((1 - f) * ang[:, None]) * mdir[turn] + np.sin(f * ang[:, None]) * best[turn]) / np.where(sa > 1e-9, sa, 1.0),
-                       mdir[turn])
-        mdir[turn] = rot / np.linalg.norm(rot, axis=1, keepdims=True)
+        mdir[free] = self.m_best[free]                         # no ferrite there yet: no field change
+        self.m_backup[free] = self.m_best[free]
+        self.m_turn = ~free & ok & (crf > 0)
+        ang = np.arccos(np.clip(np.sum(mdir[self.m_turn] * self.m_best[self.m_turn], axis=1), -1.0, 1.0))
         self.turned = float(np.degrees(np.mean(ang))) if ang.size else 0.0
         ms.set_m(mdir)
         c_fe, c_f = sens.cost_grad()
@@ -143,6 +143,20 @@ class Optimizer:
         self.G = ((Gb[0] * mask)[None], (sens.ferrite(Gb) * mask)[None])
         return (g_fe, g_f)
 
+    def rotate(self, frac):
+        """Turn the ferrite elements from their backed-up directions towards the best ones by frac * self.rot
+        (at most the full angle)."""
+        t = self.m_turn
+        m0, m1 = self.m_backup[t], self.m_best[t]
+        ang = np.arccos(np.clip(np.sum(m0 * m1, axis=1), -1.0, 1.0))
+        f = np.minimum(1.0, frac * self.rot / np.maximum(ang, 1e-12))[:, None]
+        sa = np.sin(ang)[:, None]
+        a_ = ang[:, None]
+        m = np.where(sa > 1e-9, (np.sin((1 - f) * a_) * m0 + np.sin(f * a_) * m1) / np.where(sa > 1e-9, sa, 1.0), m0)
+        mdir = self.m_backup.copy()
+        mdir[t] = m / np.linalg.norm(m, axis=1, keepdims=True)
+        self.ms.set_m(mdir)
+
     def gn_step(self, M, rho, radius):
         """Damped least-squares shift along the mode directions that cancels the mode errors rho."""
         cfg = self.cfg
@@ -151,20 +165,22 @@ class Optimizer:
         mx = np.abs(dnu).max()
         return dnu * min(1.0, radius / mx) if mx > 0 else dnu
 
-    def trial(self, kappa, m_cur, cr_cur, J_cur, vol_cap):
+    def trial(self, kappa, m_cur, cr_cur, J_cur, vol_cap, k_cap):
         """Trial design psi_new = (1-kappa) psi + kappa g + sum_k nu_k d_k.
         The fixed-point part (kappa) is the tutorial 7.6 update. The mean field of the green blob is the stiff
         direction of the objective; nu is a Gauss-Newton correction that drives it to B_c: predicted from the
-        linear model (no solve), then corrected with the true error after each forward solve. A step that
-        does not improve J halves the trust radius (cap on nu) and is retried from the last good point.
+        linear model (no solve), then corrected with the true error after each forward solve (Newton on the
+        mean), until the mean is well inside the band or gn_max_solves are used; a correction that increases the
+        error halves the trust radius (cap on nu). Returned is the best J seen.
         Every evaluated design moves (adds + removes) at most vol_cap = (iron, ferrite) volume relative to the current design.
         Returns best (J, metrics, nu, radius) over the evaluations; ms.gfA holds that state."""
         cfg, des, ms = self.cfg, self.des, self.ms
+        self.rotate(kappa / k_cap)                             # direction change scales with the step
         G = self.G
         dmodes = lambda cr: G[0] @ (cr[0] - cr_cur[0]) + G[1] @ (cr[1] - cr_cur[1])
         nu0 = np.zeros(len(G[0]))
         rho0 = m_cur["rho"] + dmodes(des.cr_trial(kappa, nu0))
-        J0, best, radius = J_cur, None, self.step_max
+        best, radius = None, self.step_max
         for _ in range(cfg.gn_max_solves):
             step = self.gn_step(des.response(kappa, nu0, G, cfg.gn_fd_eps), rho0, radius)
             if not des.within(kappa, nu0 + step, cr_cur, vol_cap):
@@ -182,10 +198,13 @@ class Optimizer:
             J = self.objective(m)
             if best is None or J < best[0]:
                 best = (J, m, nu.copy(), radius); self.A_try.data = ms.gfA.vec
-            if J < J0:
-                nu0, rho0, J0 = nu, m["rho"], J
+            # Newton on the mean-field error: continue from this point with the true error, unless it grew
+            if best[2] is nu or np.abs(m["rho"]).max() < np.abs(rho0).max():
+                nu0, rho0 = nu, m["rho"]
             else:
                 radius *= 0.5
+            if np.abs(m["rho"]).max() < 0.2 * cfg.dB_band / cfg.B_c:   # mean is inside the band: corrected enough
+                break
         self.last_radius = radius
         ms.gfA.vec.data = self.A_try
         return best
@@ -286,12 +305,13 @@ class Optimizer:
             kappa = min(kappa, k_cap)
             if sum(des.moved(kappa, np.zeros(des.n_modes), cr_cur)) < 1e-6 * vol_cap.min():
                 kappa = k_cap                                  # step would be a no-op (e.g. nothing there yet): nucleate
+            k_cap = max(k_cap, 1e-300)
             # Line search: backtrack until J decreases, then keep shrinking kappa while that still adds more than
             # ls_refine_gain of the decrease found so far.
             # (Accepting the first decrease lands near the break-even step, on the far wall of the valley.)
             best = None                                        # (J, m, nu, kappa, radius)
             for _ in range(cfg.ls_max_tries):
-                J_new, m_new, nu, radius = self.trial(kappa, m, cr_cur, J, vol_cap)
+                J_new, m_new, nu, radius = self.trial(kappa, m, cr_cur, J, vol_cap, k_cap)
                 self.n_tries += 1
                 self.log(f"    try kappa={kappa:.4f}: J={J_new:.4f} (cur {J:.4f}) blobB={m_new['blob_mean']*1e3:.2f} "
                          f"iron={m_new['iron_kg']:.0f}kg ferrite={m_new['ferrite_kg']:.0f}kg |nu|={np.abs(nu).max():.2e}")
