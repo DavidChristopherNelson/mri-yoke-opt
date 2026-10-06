@@ -1,0 +1,20 @@
+{
+ "state": "finished: no descent step",
+ "it": 86,
+ "iter_max": 150,
+ "started": "Tue 03:50",
+ "elapsed_h": 1.6758390205436282,
+ "s_per_it": 62.800995111465454,
+ "expected_its": null,
+ "eta_expected": null,
+ "eta_latest": "Tue 06:38",
+ "deadline": "Tue 07:20",
+ "mean_mT": 159.33059950616808,
+ "N_green": 1,
+ "F": 5021.761503851842,
+ "iron_kg": 635.1621883257892,
+ "ferrite_kg": 583.8123757334209,
+ "solves": 486,
+ "tries": 237,
+ "updated": "2026-10-06 05:31:21"
+}

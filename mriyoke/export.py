@@ -7,8 +7,8 @@ from .config import Config
 
 
 def write_vtk(mesh, ms, des, path):
-    VTKOutput(mesh, coefs=[des.fe.psi, des.f.psi, ms.cr, ms.crf, ms.pol, ms.B, ms.normB],
-              names=["psi", "psi_f", "iron", "ferrite", "polarity", "B", "normB"], filename=path, subdivision=0).Do()
+    VTKOutput(mesh, coefs=[des.fe.psi, des.f.psi, ms.cr, ms.crf, ms.m_cf, ms.B, ms.normB],
+              names=["psi", "psi_f", "iron", "ferrite", "m", "B", "normB"], filename=path, subdivision=0).Do()
 
 
 def _grid(cfg: Config):
@@ -22,49 +22,93 @@ def _grid(cfg: Config):
 _mapped = {}
 
 
+def keep_out(cfg: Config, X, Y, Z):
+    foot = (X <= cfg.env_x / 2) & (Z <= cfg.env_z / 2)
+    return foot & ((Y <= cfg.env_y / 2) | cfg.corridor)
+
+
 def sample_design(mesh, ms, des, cfg: Config):
-    """Level-set-like fields on the viewer grid (1/8 model), negative inside the material:
-    fe = iron, fp = ferrite magnetized +z, fn = ferrite magnetized -z. Ferrite wins overlaps."""
+    """Level-set-like fields on the viewer grid (1/8 model), negative inside the material: fe = iron, ff = ferrite
+    (ferrite wins overlaps), plus m = magnetization direction (3, grid) sampled on the same grid."""
     ax, X, Y, Z = _grid(cfg)
     if id(mesh) not in _mapped:                                # point location is the slow part: do it once
         pts = np.stack([X.ravel(), Y.ravel(), Z.ravel()], 1) * (1 - 1e-9) + 1e-6
         _mapped[id(mesh)] = mesh(pts[:, 0], pts[:, 1], pts[:, 2])
     mp = _mapped[id(mesh)]
     ev = lambda cf: np.asarray(cf(mp)).ravel().reshape(X.shape)
-    psi, psi_f, pol = ev(des.fe.psi), ev(des.f.psi), ev(ms.pol)
-    out = dict(fe=np.maximum(psi, -psi_f), fp=np.where(pol > 0, psi_f, 1.0), fn=np.where(pol > 0, 1.0, psi_f))
-    keep_out = (X <= cfg.env_x / 2) & (Y <= cfg.env_y / 2) & (Z <= cfg.env_z / 2)
+    psi, psi_f = ev(des.fe.psi), ev(des.f.psi)
+    out = dict(fe=np.maximum(psi, -psi_f), ff=psi_f.copy())
+    ko = keep_out(cfg, X, Y, Z)
     for v in out.values():
-        v[keep_out] = 1.0
+        v[ko] = 1.0
         v[-1, :, :] = v[:, -1, :] = v[:, :, -1] = 1.0          # close surface at design-box faces
+    out["m"] = np.stack([ev(g) for g in ms.mdir])
     return out
 
 
 def material_mask(fields):
-    """int8 grid: 0 air, 1 iron, 2 ferrite +z, 3 ferrite -z."""
+    """int8 grid: 0 air, 1 iron, 2 ferrite with m_z >= 0, 3 ferrite with m_z < 0."""
     m = np.zeros(fields["fe"].shape, dtype=np.int8)
-    m[fields["fe"] < 0] = 1; m[fields["fp"] < 0] = 2; m[fields["fn"] < 0] = 3
+    m[fields["fe"] < 0] = 1
+    f = fields["ff"] < 0
+    m[f & (fields["m"][2] >= 0)] = 2; m[f & (fields["m"][2] < 0)] = 3
     return m
 
 
-def mirror8(v):
+def mirror8(v, comp=None):
+    """Mirror a 1/8-model grid (first node on the symmetry planes) to the full magnet. comp: component index of a
+    magnetization / B-like vector, whose sign flips under the mirrors as the field's symmetry demands
+    (B normal to z = 0, tangential to x = 0 and y = 0)."""
     for axis in range(3):
-        v = np.concatenate([np.flip(np.take(v, np.arange(1, v.shape[axis]), axis=axis), axis=axis), v], axis=axis)
+        half = np.take(v, np.arange(1, v.shape[axis]), axis=axis)
+        if comp is not None and ((axis == 2) != (comp == 2)):
+            half = -half
+        v = np.concatenate([np.flip(half, axis=axis), v], axis=axis)
     return v
 
 
-def surface(vals, h, cfg: Config, level=0.0):
+def _pack(verts, faces, cfg: Config, extra=None):
+    D = cfg.design_L
+    q = np.clip(np.round((verts + D) / (2 * D) * 65535), 0, 65535).astype(np.uint16)
+    out = dict(pos=base64.b64encode(q.tobytes()).decode(), idx=base64.b64encode(faces.astype(np.uint32).tobytes()).decode(),
+               ntri=int(len(faces)))
+    if extra:
+        out.update(extra)
+    return out
+
+
+def surface(vals, h, cfg: Config, level=0.0, mz=None):
     """Marching-cubes surface of {vals < level} mirrored to the full magnet, packed for the viewer.
-    vals on a 1/8-model grid with spacing h whose first node lies on the symmetry planes."""
+    vals on a 1/8-model grid with spacing h whose first node lies on the symmetry planes. With mz (same grid),
+    every vertex gets a colour from the z component of the magnetization there (red +z, white 0, blue -z)."""
     full = mirror8(vals)
     if full.min() >= level:
         return dict(pos="", idx="", ntri=0)
     verts, faces, _, _ = measure.marching_cubes(full, level=level, spacing=(h, h, h))
-    verts = verts - (vals.shape[0] - 1) * h
+    extra = None
+    if mz is not None:
+        from scipy import ndimage
+        z = ndimage.map_coordinates(mirror8(mz, comp=2), (verts / h).T, order=1, mode="nearest")
+        col = np.stack([np.clip(1 + z, 0, 1), np.clip(1 - np.abs(z), 0, 1), np.clip(1 - z, 0, 1)], 1)
+        extra = dict(col=base64.b64encode((col * 255).astype(np.uint8).tobytes()).decode())
+    return _pack(verts - (vals.shape[0] - 1) * h, faces, cfg, extra)
+
+
+def arrows(fields, cfg: Config, every=2):
+    """Magnetization arrows at every `every`-th viewer-grid node inside ferrite, mirrored to the full magnet:
+    packed positions (uint16) and directions (int8)."""
+    h = cfg.viewer_h
+    inside = mirror8(fields["ff"]) < 0
+    m = np.stack([mirror8(fields["m"][i], comp=i) for i in range(3)])
+    n = inside.shape[0]
+    idx = np.argwhere(inside)
+    idx = idx[(idx % every == 0).all(axis=1)]
+    pos = (idx - (n - 1) / 2) * h
+    d = m[:, idx[:, 0], idx[:, 1], idx[:, 2]].T
     D = cfg.design_L
-    q = np.clip(np.round((verts + D) / (2 * D) * 65535), 0, 65535).astype(np.uint16)
-    return dict(pos=base64.b64encode(q.tobytes()).decode(), idx=base64.b64encode(faces.astype(np.uint32).tobytes()).decode(),
-                ntri=int(len(faces)))
+    q = np.clip(np.round((pos + D) / (2 * D) * 65535), 0, 65535).astype(np.uint16)
+    return dict(pos=base64.b64encode(q.tobytes()).decode(), dir=base64.b64encode(np.clip(np.round(d * 127), -127, 127).astype(np.int8).tobytes()).decode(),
+                n=int(len(idx)), len=float(every * h * 0.8))
 
 
 def green_surface(blob, cfg: Config):
@@ -81,15 +125,12 @@ def green_surface(blob, cfg: Config):
         return dict(pos="", idx="", ntri=0)
     h = f * cfg.dx_img
     verts, faces, _, _ = measure.marching_cubes(b, level=0.5, spacing=(h, h, h))
-    verts = verts - (np.array(b.shape) / 2 - 0.5) * h
-    D = cfg.design_L
-    q = np.clip(np.round((verts + D) / (2 * D) * 65535), 0, 65535).astype(np.uint16)
-    return dict(pos=base64.b64encode(q.tobytes()).decode(), idx=base64.b64encode(faces.astype(np.uint32).tobytes()).decode(),
-                ntri=int(len(faces)))
+    return _pack(verts - (np.array(b.shape) / 2 - 0.5) * h, faces, cfg)
 
 
 def frame_from_fields(fields, cfg: Config):
-    return {k: surface(v, cfg.viewer_h, cfg) for k, v in fields.items()}
+    return dict(fe=surface(fields["fe"], cfg.viewer_h, cfg), ff=surface(fields["ff"], cfg.viewer_h, cfg, mz=fields["m"][2]),
+                ar=arrows(fields, cfg))
 
 
 VIEWER_HTML = r"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>MRI magnet iterations</title>
@@ -105,13 +146,15 @@ const cam = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.01, 100); 
 const ren = new THREE.WebGLRenderer({antialias:true}); ren.setSize(innerWidth, innerHeight); document.body.appendChild(ren.domElement);
 scene.add(new THREE.AmbientLight(0xffffff, .45)); const dl = new THREE.DirectionalLight(0xffffff, .9); dl.position.set(1,-2,3); scene.add(dl);
 const dl2 = new THREE.DirectionalLight(0xffffff, .4); dl2.position.set(-2,1,-1); scene.add(dl2);
-// static: patient/bed envelope, design box, axes
+// static: patient/bed envelope (blue), access corridor (dashed blue), design box (grey), axes (x red, y green, z blue)
 scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(DATA.env[0], DATA.env[1], DATA.env[2])), new THREE.LineBasicMaterial({color:0x4080ff})));
+if (DATA.corridor) { const c = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(DATA.env[0], 2*D, DATA.env[2])), new THREE.LineDashedMaterial({color:0x4080ff, dashSize:0.02, gapSize:0.02})); c.computeLineDistances(); scene.add(c); }
 scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2*D,2*D,2*D)), new THREE.LineBasicMaterial({color:0x555555})));
 scene.add(new THREE.AxesHelper(D*1.3));
-// iron grey, ferrite +z red, ferrite -z blue, largest green component translucent green
-const mats = {fe: new THREE.MeshPhongMaterial({color:0x9a9a9a, side:THREE.DoubleSide}), fp: new THREE.MeshPhongMaterial({color:0xd04040, side:THREE.DoubleSide}),
-  fn: new THREE.MeshPhongMaterial({color:0x4060d0, side:THREE.DoubleSide}), gr: new THREE.MeshPhongMaterial({color:0x30d060, side:THREE.DoubleSide, transparent:true, opacity:.45, depthWrite:false})};
+// iron grey; ferrite coloured by the z component of its magnetization (red +z, white transverse, blue -z) with
+// black arrows for the direction; largest green component translucent green
+const mats = {fe: new THREE.MeshPhongMaterial({color:0x9a9a9a, side:THREE.DoubleSide}), ff: new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide}),
+  gr: new THREE.MeshPhongMaterial({color:0x30d060, side:THREE.DoubleSide, transparent:true, opacity:.45, depthWrite:false})};
 let shown = [];
 function b64(s, T){ const b = atob(s); const u = new Uint8Array(b.length); for (let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return new T(u.buffer); }
 function show(i){
@@ -124,7 +167,17 @@ function show(i){
     const q = b64(m.pos, Uint16Array); const pos = new Float32Array(q.length);
     for (let j=0;j<q.length;j++) pos[j] = q[j]/65535*2*D - D;
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3)); g.setIndex(new THREE.BufferAttribute(b64(m.idx, Uint32Array),1)); g.computeVertexNormals();
+    if (m.col) { const c = b64(m.col, Uint8Array); const col = new Float32Array(c.length); for (let j=0;j<c.length;j++) col[j] = c[j]/255; g.setAttribute('color', new THREE.BufferAttribute(col,3)); }
     const o = new THREE.Mesh(g, mats[k]); scene.add(o); shown.push(o);
+  }
+  const a = f.meshes.ar;
+  if (a && a.n > 0) {
+    const q = b64(a.pos, Uint16Array), d = b64(a.dir, Int8Array); const seg = new Float32Array(a.n*6);
+    for (let j=0;j<a.n;j++) { for (let c=0;c<3;c++) { const p = q[3*j+c]/65535*2*D - D, v = d[3*j+c]/127*a.len; seg[6*j+c] = p - v/2; seg[6*j+3+c] = p + v/2; } }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(seg,3));
+    const o = new THREE.LineSegments(g, new THREE.LineBasicMaterial({color:0x101010})); scene.add(o); shown.push(o);
+    const tip = new THREE.BufferGeometry(); tip.setAttribute('position', new THREE.BufferAttribute(seg.filter((_, i) => i % 6 >= 3), 3));
+    const t = new THREE.Points(tip, new THREE.PointsMaterial({color:0x101010, size:0.006})); scene.add(t); shown.push(t);
   }
   document.getElementById('stats').textContent = f.label;
 }
@@ -145,8 +198,8 @@ show(0); loop(0);
 
 
 def write_viewer(frames, cfg: Config, path):
-    """frames: list of dict(it, label, meshes={fe, fp, fn[, gr]: surface(...)})."""
-    data = dict(D=cfg.design_L, env=[cfg.env_x, cfg.env_y, cfg.env_z], frames=frames)
+    """frames: list of dict(it, label, meshes={fe, ff[, gr]: surface(...), ar: arrows(...)})."""
+    data = dict(D=cfg.design_L, env=[cfg.env_x, cfg.env_y, cfg.env_z], corridor=cfg.corridor, frames=frames)
     with open(path, "w") as f:
         f.write(VIEWER_HTML.replace("__DATA__", json.dumps(data)))
 
@@ -162,7 +215,12 @@ def write_slice_png(mesh, ms, des, cfg: Config, path, title=""):
     mp = mesh(X.ravel(), 1e-6 + 0 * X.ravel(), Z.ravel())
     ev = lambda cf: np.asarray(cf(mp)).ravel().reshape(X.shape)
     full = lambda a: np.concatenate([np.flip(np.concatenate([np.flip(a[1:], 0), a], 0)[:, 1:], 1), np.concatenate([np.flip(a[1:], 0), a], 0)], 1)
-    nBf, crf, ferf = full(ev(ms.normB) * 1e3), full(ev(ms.cr)), full(ev(ms.crf) * ev(ms.pol))
+    nBf, crf, cff = full(ev(ms.normB) * 1e3), full(ev(ms.cr)), full(ev(ms.crf))
+    mx, mz = ev(ms.mdir[0]), ev(ms.mdir[2])
+    fullm = lambda a, odd_x, odd_z: np.concatenate([np.flip(np.concatenate([(-1 if odd_x else 1) * np.flip(a[1:], 0), a], 0)[:, 1:], 1) * (-1 if odd_z else 1),
+                                                   np.concatenate([(-1 if odd_x else 1) * np.flip(a[1:], 0), a], 0)], 1)
+    mxf, mzf = fullm(mx, True, True), fullm(mz, False, False)
+    ferf = cff * mzf
     ext = [-D, D, -D, D]
     fig, axs = plt.subplots(1, 3, figsize=(17, 5.5))
     im = axs[0].imshow(nBf.T, origin="lower", extent=ext, cmap="viridis", vmin=0, vmax=cfg.B_c * 2e3)
@@ -172,7 +230,12 @@ def write_slice_png(mesh, ms, des, cfg: Config, path, title=""):
     axs[1].imshow(crf.T, origin="lower", extent=ext, cmap="Greys", vmin=0, vmax=1)
     axs[1].set_title("iron fraction, plane y=0")
     axs[2].imshow(ferf.T, origin="lower", extent=ext, cmap="bwr", vmin=-1, vmax=1)
-    axs[2].set_title("ferrite fraction x polarity (red +z, blue -z), plane y=0")
+    k = max(1, (2 * n - 1) // 30)
+    xs = np.linspace(-D, D, 2 * n - 1)
+    sel = cff[::k, ::k] > 0.3
+    Xg, Zg = np.meshgrid(xs[::k], xs[::k], indexing="ij")
+    axs[2].quiver(Xg[sel], Zg[sel], mxf[::k, ::k][sel], mzf[::k, ::k][sel], color="k", scale=25, width=0.004)
+    axs[2].set_title("ferrite fraction x m_z (red +z, blue -z), arrows: m in the plane, y=0")
     for a in axs:
         a.add_patch(plt.Rectangle((-cfg.env_x / 2, -cfg.env_z / 2), cfg.env_x, cfg.env_z, fill=False, ec="deepskyblue", lw=1.5))
         a.set_xlabel("x [m]"); a.set_ylabel("z [m]")

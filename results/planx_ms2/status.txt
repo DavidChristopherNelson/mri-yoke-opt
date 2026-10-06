@@ -1,0 +1,5 @@
+session planx_ms2: started Tue 03:50, budget ends Tue 07:20, now Tue 05:36:45, 3 runs x 4 threads
+run           state                            it    s/it   mean mT   N_green  F $/vox   hours  expected   latest     
+noise5        finished: no descent step    64/150      56    159.10         2 2.12e+03    1.40  unknown    Tue 06:35  
+noise6        finished: no descent step    86/150      63    159.33         1 5.02e+03    1.68  unknown    Tue 06:38  
+noise7        running                      87/150      51    159.22       440     10.9    1.70  unknown    Tue 06:26  

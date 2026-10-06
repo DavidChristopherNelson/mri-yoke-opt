@@ -127,10 +127,11 @@ Sections 1–8 describe the earlier formulation (fixed NdFeB pole magnets, DSV s
 
 - No fixed magnet. Design domain = 1/8 design box minus the patient/bed keep-out envelope `[0, env_x/2] × [0, env_y/2] × [0, env_z/2]` (placeholders 400 × 400 × 300 mm full size).
 - Two level sets on the same mesh: ψ < 0 iron, ψ_f < 0 ferrite; ferrite wins overlaps, so cr + cr_f ≤ 1.
-- Per-element polarity p ∈ {+1, −1}: ferrite is magnetized along ±z.
-- Material law (geometric mix): ν = ν0^(1−cr−cr_f) · ν_iron(B)^cr · (ν0/μr_f)^cr_f. Source everywhere in the design domain: M = cr_f · p · (Br_f/μ0)/μr_f · e_z. Ferrite: Br_f = 0.40 T, μr_f = 1.05, 4900 kg/m³.
-- Sensitivities for any functional (K λ = ∂J/∂A): dJ/dcr_e = −∫_e ∂ν/∂cr curlA·curlλ; dJ/dcr_f,e = −∫_e ∂ν/∂cr_f curlA·curlλ + p (Br_f/μ0)/μr_f ∫_e e_z·curlλ. Checked against finite differences (`scripts/test_gradient.py`).
-- Polarity: dJ/dp_e = cr_f,e M_f ∫_e e_z·curlλ, so the polarity that lowers J is p_e = −sign(∫_e e_z·curlλ_J) (λ_J the adjoint of the minimised J; the brief's "sign(...)" with the sign convention made explicit). **Deviation**: it is applied every iteration only to elements that hold no ferrite yet, so new ferrite nucleates with the best polarity. Flipping existing ferrite is a finite jump outside the line search (near the band every element would flip whenever the field overshoots); existing ferrite changes polarity by being removed and regrown. Noise seeds set all polarities once from one forward + adjoint solve.
+- Per-element magnetization direction m_e (unit vector; the brief's p ∈ {+1, −1} along z was generalised on 2026-10-06).
+- Material law (geometric mix): ν = ν0^(1−cr−cr_f) · ν_iron(B)^cr · (ν0/μr_f)^cr_f. Source everywhere in the design domain: M = cr_f · (Br_f/μ0)/μr_f · m_e. Ferrite: Br_f = 0.40 T, μr_f = 1.05, 4900 kg/m³.
+- Access corridor (2026-10-06): the envelope's x–z footprint extruded along y through the design box holds no material (`corridor`), so the patient can enter along y.
+- Sensitivities for any functional (K λ = ∂J/∂A): dJ/dcr_e = −∫_e ∂ν/∂cr curlA·curlλ; dJ/dcr_f,e = −∫_e ∂ν/∂cr_f curlA·curlλ + M_f m_e·∫_e curlλ. Checked against finite differences (`scripts/test_gradient.py`).
+- Direction: dJ/dm_e = cr_f,e M_f ∫_e curlλ, so the direction that lowers J is m_e = −∫_e curlλ_J / |…| (λ_J the adjoint of the minimised J). Elements without ferrite take it outright (new ferrite nucleates with its best direction); elements with ferrite turn towards it by at most `dir_rot_max` (0.2 rad, halved after a failed line search) per step, inside the line search, so the field change stays controlled. Noise seeds give every ferrite blob one random direction (uniform on the sphere, from the seed's generator).
 - Step caps per accepted iteration: iron moved (added + removed) ≤ `mass_step_frac_fe` × `iron_ref_kg`, ferrite moved ≤ `mass_step_frac_f` × `ferrite_ref_kg` (5 % × 300 kg = 15 kg, 5 % × 200 kg = 10 kg since 2026-10-05, 1 % before; reference masses are placeholders). Each level set gets its own cap on κ, so a tight cap on one material does not slow the other; the mean-field correction is scaled to respect both.
 - Demagnetisation gate: per ferrite element h = H·(p e_z) = (ν0/μr_f) p B_z − M_f; reported `demag_frac` = ferrite volume fraction with h < −0.8 Hcj(T_cold) (250 kA/m default); quadratic penalty `demag_weight` × Σ cr_f vol ((−0.8 Hcj − h)/Hcj)²₊ / V_ref added to the objective.
 - Cost in dollars for the full magnet: C = C_fe + C_f + C_fixed (C_fixed $2000; placeholders: iron $2/kg, ferrite $3/kg).
@@ -155,7 +156,7 @@ minimise F = (C_fe + C_f + C_fixed) / N_green
 
 ### 10.4 Seeds and multi-start
 
-- `init=noise:<seed>`: two white-noise fields on a grid of pitch `h_seed` (10 mm), Gaussian-blurred with correlation length `ell_seed` (40 mm), thresholded at the quantiles that give 20 % iron and 10 % ferrite of the design volume. Deterministic given the seed; no randomness inside the loop.
+- `init=noise:<seed>`: two white-noise fields on a grid of pitch `h_seed` (10 mm), Gaussian-blurred with correlation length `ell_seed` (40 mm), thresholded at the quantiles that give 20 % iron and 10 % ferrite of the design volume; each connected ferrite blob gets one random direction. Deterministic given the seed; no randomness inside the loop.
 - `init=hframe:thin|medium|thick`: iron back plate + post, ferrite slab 30 / 50 / 80 mm at the old magnet position.
 - `scripts/multistart.py`: N noise seeds + 3 H-frame seeds through `session.py`, then `summary.csv` and IoU matrices of the final iron and ferrite masks.
 - With 20 % iron a noise seed starts at ~1000 kg; it sheds mass slowly even at the 5 % cap (15 kg per step; ~700 iterations to the band at 1 %).
@@ -166,7 +167,7 @@ minimise F = (C_fe + C_f + C_fixed) / N_green
 |---|---|---|
 | projection Gram matrix over the whole envelope | over a sphere of radius `proj_radius` (100 mm) at the centre, meshed as its own region; the smooth count sums the voxels inside it. `proj_radius=0` gives the brief's variant | sources touch the envelope box, so the polynomial projection does not converge there: on the H-frame start |B| spans 9–324 mT in the box, residual 7 mT rms and a 5 mT bias at the centre, unchanged for degree 6–12. The band is ±0.15 mT. In the sphere the residual is the FE noise of the mesh |
 | widths start at ~dB_band, ~s_max | same schedule, but w_b ≥ rms deviation of the projected field from B_c over the blob (w_s widened by the same factor) | 80 mT from the band a 0.3 mT sigmoid sees one voxel; J was then not a usable function of the design (line search failed at iteration 2) |
-| polarity updated every iteration | only where there is no ferrite yet (10.1) | uncontrolled jumps |
+| polarity ±z, updated every iteration | free unit vector per element; new ferrite takes the best direction, existing ferrite turns ≤ 0.2 rad per step (10.1) | user request 2026-10-06; a jump of existing ferrite is outside the line search |
 | one κ limited by both caps | κ capped per level set | the iron cap throttled ferrite growth to a third of its cap |
 | K0 given | assumed (10.3) | not in the brief |
 | exact count needs |B| and ∂|B|/∂r "from the FE solution" | slope by central differences of the sampled |B| | curl A is piecewise linear and discontinuous; no usable pointwise derivative |
@@ -195,3 +196,8 @@ Coarse mesh: FE noise in |B| is ~1–3 mT in the projection sphere against a ±0
 3. Reference masses for the step caps (300 kg iron, 200 kg ferrite)?
 4. K0 definition for the precheck?
 5. Projection sphere radius (100 mm) acceptable, or mesh the envelope so finely near the sources that a box projection is not needed?
+6. Corridor: is the full envelope footprint (400 × 300 mm) the right access cross-section?
+
+### 10.8 Multi-start run planx_ms2 (2026-10-05/06, ±z polarity, no corridor, 5 % caps, C_fixed $2000; stopped before batch 3 ended)
+
+11 coarse runs, ~100 iterations each. All 8 noise seeds (start ~500 kg ferrite) reached 159.2 mT within 50–70 iterations; no H-frame seed did in ~100 (slab grew 1–2 kg/step). Best: noise7 F = $10.9/voxel (N_green 440), noise2 $13.4 (368); the other seeds ended with 1–2 green voxels. N_green on this mesh is FE noise against the ±0.15 mT band (`resid` 0.06–0.2 mT); N_smooth ~4000 for the good runs. Shapes: two large +z ferrite blocks above/below the envelope, iron behind, no closed return yoke; IoU between seeds 0.1–0.3. Results (without viewers / VTK) in `results/planx_ms2`.

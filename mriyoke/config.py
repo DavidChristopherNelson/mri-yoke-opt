@@ -29,8 +29,9 @@ class Config:
     env_x: float = 0.400              # PLACEHOLDER full width [m]
     env_y: float = 0.400              # PLACEHOLDER full depth [m]
     env_z: float = 0.300              # PLACEHOLDER full height = pole gap [m]
+    corridor: bool = True             # keep the envelope's x-z footprint free of material along the whole y axis (patient access)
 
-    # ---- ferrite (design variable, magnetized +-z per element) ----
+    # ---- ferrite (design variable; each element has its own magnetization direction, a unit vector) ----
     Br_f: float = 0.40                # remanence [T]
     mu_r_f: float = 1.05
     ferrite_density: float = 4900.0   # kg/m^3
@@ -39,6 +40,7 @@ class Config:
     Hcj_cold: float = 250e3           # intrinsic coercivity at the coldest operating temperature [A/m]
     demag_frac: float = 0.8           # demagnetisation gate: H.m >= -demag_frac * Hcj_cold
     demag_weight: float = 10.0        # weight of the quadratic demagnetisation penalty
+    dir_rot_max: float = 0.2          # existing ferrite turns towards its best direction by at most this angle per step [rad]
 
     # ---- design domain (1/8 octant box) and air box ----
     design_L: float = 0.450           # design box edge from origin [m]

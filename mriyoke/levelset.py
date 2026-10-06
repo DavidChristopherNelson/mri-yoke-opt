@@ -36,24 +36,34 @@ def initial_psi_cf(cfg: Config):
     return iron, slab
 
 
-def noise_nodal(cfg: Config, seed, coords):
-    """Noise seed: nodal values of (psi, psi_f) at the mesh vertices coords (nv, 3).
-    Two independent white-noise fields on a regular grid of pitch h_seed over the design box, Gaussian-blurred
-    with correlation length ell_seed, each thresholded at the quantile (over the grid points outside the envelope)
-    that gives the wanted volume fraction. The level-set function is the blurred field minus its threshold,
-    interpolated to the vertices. Deterministic for a given seed."""
+def noise_seed(cfg: Config, seed, coords, centroids):
+    """Noise seed. Two independent white-noise fields on a regular grid of pitch h_seed over the design box,
+    Gaussian-blurred with correlation length ell_seed, each thresholded at the quantile (over the grid points of the
+    design region) that gives the wanted volume fraction. The level-set function is the blurred field minus its
+    threshold, interpolated to the mesh vertices coords (nv, 3). Every connected ferrite blob gets one random
+    magnetization direction (uniform on the sphere); elements take the direction of the nearest blob.
+    Returns (psi nodal, psi_f nodal, directions (ne, 3)). Deterministic for a given seed."""
     h = cfg.h_seed
     n = int(round(cfg.design_L / h)) + 1
     ax = np.arange(n) * h
     X, Y, Z = np.meshgrid(ax, ax, ax, indexing="ij")
-    design = ~((X <= cfg.env_x / 2) & (Y <= cfg.env_y / 2) & (Z <= cfg.env_z / 2))
+    foot = (X <= cfg.env_x / 2) & (Z <= cfg.env_z / 2)
+    design = ~(foot & ((Y <= cfg.env_y / 2) | cfg.corridor))
     rng = np.random.default_rng(seed)
     out = []
     for frac in (cfg.seed_iron_frac, cfg.seed_ferrite_frac):
         f = ndimage.gaussian_filter(rng.standard_normal((n, n, n)), sigma=cfg.ell_seed / h, mode="reflect")
         psi = (np.quantile(f[design], 1 - frac) - f) / f.std()                 # negative in the top `frac` of the field
-        out.append(ndimage.map_coordinates(psi, (coords / h).T, order=1, mode="nearest"))
-    return out
+        out.append(psi)
+    lab, nb = ndimage.label((out[1] < 0) & design)
+    dirs = rng.standard_normal((nb + 1, 3)); dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+    _, idx = ndimage.distance_transform_edt(lab == 0, return_indices=True)    # nearest blob cell for every grid cell
+    near = lab[tuple(idx)]
+    cells = np.clip(np.rint(centroids / h).astype(int), 0, n - 1)
+    m = dirs[near[tuple(cells.T)]]
+    m[near[tuple(cells.T)] == 0] = [0.0, 0.0, 1.0]
+    nodal = [ndimage.map_coordinates(psi, (coords / h).T, order=1, mode="nearest") for psi in out]
+    return nodal[0], nodal[1], m, nb
 
 
 class LevelSet:

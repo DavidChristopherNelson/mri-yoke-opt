@@ -1,5 +1,5 @@
 """1/8-octant OCC geometry: air box, design box, patient/bed envelope (keep-out and imaging region)
-with the projection sphere at its centre."""
+with the projection sphere at its centre and the access corridor (envelope footprint extruded along y)."""
 from netgen.occ import Box, Sphere, Glue, OCCGeometry, Pnt
 from ngsolve import Mesh
 from .config import Config
@@ -24,6 +24,11 @@ def build_geometry(cfg: Config):
     env.mat("env"); env.maxh = cfg.maxh_dsv
 
     design = octant_D - env_box
+    if cfg.corridor:                                           # patient access: envelope footprint extruded along y, no material
+        cor = Box(Pnt(0, ey, 0), Pnt(ex, D, ez))
+        cor.mat("corridor"); cor.maxh = cfg.maxh_design
+        design = design - cor
+        parts.append(cor)
     design.mat("design"); design.maxh = cfg.maxh_design
 
     air = octant_L - octant_D

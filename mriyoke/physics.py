@@ -20,8 +20,9 @@ class Magnetostatics:
         self.pwc = L2(mesh, order=0)
         self.cr = GridFunction(self.pwc, name="cutratio")   # iron volume fraction per element
         self.crf = GridFunction(self.pwc, name="cutratio_f")  # ferrite volume fraction per element (cr + crf <= 1)
-        self.pol = GridFunction(self.pwc, name="polarity")  # ferrite magnetization direction per element, +1 or -1 (along z)
-        self.pol.vec.FV().NumPy()[:] = 1.0
+        self.mdir = [GridFunction(self.pwc, name=f"m{c}") for c in "xyz"]   # ferrite magnetization direction per element (unit vector)
+        self.m_cf = CoefficientFunction(tuple(self.mdir))
+        self.set_m(np.tile([0.0, 0.0, 1.0], (mesh.ne, 1)))
         self.gfA = GridFunction(self.fes, name="A")
         self.gfLam = GridFunction(self.fes, name="lambda")
         u, v = self.fes.TnT()
@@ -35,11 +36,11 @@ class Magnetostatics:
         lnu_f = float(np.log(NU0 / cfg.mu_r_f))
         mix = lambda nu_iron: exp(self.cr * log(nu_iron) + self.crf * lnu_f + (1 - self.cr - self.crf) * log(NU0))
         self.nu_u = mesh.MaterialCF({"design": mix(self.nu_iron_u)}, default=NU0)
-        # Ferrite is a source wherever its cut ratio is nonzero: M = crf * pol * (Br_f/mu0)/mu_r_f * e_z.
+        # Ferrite is a source wherever its cut ratio is nonzero: M = crf * (Br_f/mu0)/mu_r_f * m, m the unit direction.
         self.a = BilinearForm(self.fes, symmetric=False)
         self.a += (self.nu_u * Bu) * curl(v) * dx
         self.a += cfg.reg_eps * NU0 * u * v * dx
-        self.a += -(self.crf * self.pol * cfg.M_f) * curl(v)[2] * dx("design")
+        self.a += -(self.crf * cfg.M_f) * InnerProduct(self.m_cf, curl(v)) * dx("design")
         self.pre = Preconditioner(self.a, "bddc") if cfg.linear_solver == "bddc" else None
         self.B = curl(self.gfA)
         self.normB = Norm(self.B)
@@ -112,6 +113,15 @@ class Magnetostatics:
             self.gfLam.vec.data = self.inv_adj * rhs_vec
         return self.gfLam
 
-    def Bz_elem(self):
-        """Element means of B_z (numpy, length ne)."""
-        return np.array(Integrate(self.B[2], self.mesh, element_wise=True)) / self.vol_e
+    def get_m(self):
+        """(ne, 3) magnetization directions."""
+        return np.stack([g.vec.FV().NumPy() for g in self.mdir], 1)
+
+    def set_m(self, m):
+        for i, g in enumerate(self.mdir):
+            g.vec.FV().NumPy()[:] = m[:, i]
+
+    def B_elem(self):
+        """Element means of B (numpy, (ne, 3))."""
+        with TaskManager():
+            return np.stack([np.array(Integrate(self.B[i], self.mesh, element_wise=True)) for i in range(3)], 1) / self.vol_e[:, None]

@@ -1,0 +1,439 @@
+=== run 2026-10-06 00:20:42  Config(B_c=0.1592, dx_img=0.003, readout_axis='y', ism_band=0.0007, ism_fraction=0.5, delta=5.0, G_max=0.01, kappa_s=0.4, anneal_start=1.0, anneal_end=0.05, anneal_iters=100, proj_radius=0.1, blob_fallback_r=0.05, env_x=0.4, env_y=0.4, env_z=0.3, Br_f=0.4, mu_r_f=1.05, ferrite_density=4900.0, ferrite_cost_per_kg=3.0, C_fixed=2000.0, Hcj_cold=250000.0, demag_frac=0.8, demag_weight=10.0, design_L=0.45, air_L=1.0, k1=49.4, k2=1.46, k3=520.6, iron_density=7850.0, iron_cost_per_kg=2.0, maxh_air=0.12, maxh_design=0.035, maxh_dsv=0.025, fe_order=2, newton_maxit=25, newton_tol=1e-08, reg_eps=1e-08, linear_solver='bddc', verbose_newton=False, iter_max=150, kappa0=0.1, kappa_max=1.0, kappa_min=0.001, kappa_up=1.5, kappa_down=0.6, ls_max_tries=10, ls_refine_gain=0.05, dJ_rel_tol=0.0001, dJ_rel_count=5, time_budget_h=3.5, threads=3, run_history='results/run_history.csv', resume='', init='noise:3', h_seed=0.01, ell_seed=0.04, seed_iron_frac=0.2, seed_ferrite_frac=0.1, mass_step_frac_fe=0.05, mass_step_frac_f=0.05, iron_ref_kg=300.0, ferrite_ref_kg=200.0, harm_order=8, gn_max_solves=3, gn_step_max=0.3, gn_lm=0.01, gn_fd_eps=0.02, sens_eps=0.03, sens_power=0.5, ls_max_fails=3, slab_x=0.3, slab_y=0.3, slab_t=0.05, slab_z0=0.15, plate_t=0.04, post_t=0.05, pole_t=0.01, results_dir='results/planx_ms2/noise3', viewer_h=0.02, slice_res=120)
+mesh: 20080 elements, 4037 vertices (1.7s)
+HCurl order 2: 108012 dofs
+green voxel: | |B| - 159.2 mT | <= 0.150 mT (G_max limit binds), | d|B|/dy | <= 4.00 mT/m; 1742400 voxels of 3.0 mm, 15 modes (degree <= 8)
+noise seed 3: pitch 0.01 m, correlation length 0.04 m, 20% iron, 10% ferrite
+polarities set from the adjoint: 57% of the design elements +z
+[it   0] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=   1.181 mT  iron=  849.4 kg  ferrite=  247.7 kg  moved=0.00/0.00 kg  demag=0.14  resid=0.100 mT  J=-1.4417  kappa=0.100  (129s)
+    eta: timing... | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0114: J=-1.4542 (cur -1.4417) blobB=1.55 iron=838kg ferrite=243kg |nu|=8.69e-03
+    try kappa=0.0068: J=-1.4516 (cur -1.4417) blobB=1.59 iron=838kg ferrite=245kg |nu|=9.18e-03
+[it   1] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=   1.551 mT  iron=  838.4 kg  ferrite=  243.1 kg  moved=15.00/4.86 kg  demag=0.14  resid=0.118 mT  J=-1.4542  kappa=0.017  (89s)
+    eta: 89 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0121: J=-1.4651 (cur -1.4525) blobB=1.98 iron=827kg ferrite=239kg |nu|=8.49e-03
+    try kappa=0.0073: J=-1.4627 (cur -1.4525) blobB=2.03 iron=826kg ferrite=241kg |nu|=8.92e-03
+[it   2] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=   1.977 mT  iron=  827.3 kg  ferrite=  238.7 kg  moved=15.00/4.80 kg  demag=0.14  resid=0.122 mT  J=-1.4651  kappa=0.018  (78s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0126: J=-1.4768 (cur -1.4631) blobB=2.50 iron=816kg ferrite=234kg |nu|=8.14e-03
+    try kappa=0.0076: J=-1.4749 (cur -1.4631) blobB=2.56 iron=815kg ferrite=236kg |nu|=8.56e-03
+[it   3] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=   2.502 mT  iron=  816.3 kg  ferrite=  234.4 kg  moved=15.00/4.85 kg  demag=0.14  resid=0.122 mT  J=-1.4768  kappa=0.019  (83s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:49
+    try kappa=0.0134: J=-1.4927 (cur -1.4744) blobB=4.03 iron=806kg ferrite=230kg |nu|=8.12e-03
+    try kappa=0.0080: J=-1.4915 (cur -1.4744) blobB=4.15 iron=805kg ferrite=232kg |nu|=8.56e-03
+[it   4] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=   4.032 mT  iron=  805.9 kg  ferrite=  230.2 kg  moved=15.00/4.87 kg  demag=0.14  resid=0.138 mT  J=-1.4927  kappa=0.020  (99s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0139: J=-1.5084 (cur -1.4855) blobB=7.22 iron=797kg ferrite=227kg |nu|=9.46e-03
+    try kappa=0.0083: J=-1.5074 (cur -1.4855) blobB=7.32 iron=796kg ferrite=229kg |nu|=9.85e-03
+[it   5] F=inf $/voxel  N_green=0  N_smooth=2.12e+04  blobB=   7.221 mT  iron=  796.9 kg  ferrite=  226.6 kg  moved=15.00/4.96 kg  demag=0.14  resid=0.122 mT  J=-1.5084  kappa=0.021  (85s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0145: J=-1.5095 (cur -1.4934) blobB=9.22 iron=788kg ferrite=223kg |nu|=1.13e-02
+    try kappa=0.0087: J=-1.5080 (cur -1.4934) blobB=9.25 iron=787kg ferrite=226kg |nu|=1.17e-02
+[it   6] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=   9.218 mT  iron=  787.7 kg  ferrite=  223.5 kg  moved=15.00/5.05 kg  demag=0.14  resid=0.122 mT  J=-1.5095  kappa=0.022  (74s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0158: J=-1.5094 (cur -1.4999) blobB=10.26 iron=778kg ferrite=221kg |nu|=1.23e-02
+    try kappa=0.0095: J=-1.5081 (cur -1.4999) blobB=10.28 iron=778kg ferrite=223kg |nu|=1.27e-02
+[it   7] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  10.259 mT  iron=  778.4 kg  ferrite=  220.8 kg  moved=15.00/5.17 kg  demag=0.13  resid=0.140 mT  J=-1.5094  kappa=0.024  (86s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0165: J=-1.5113 (cur -1.5043) blobB=11.18 iron=770kg ferrite=218kg |nu|=1.33e-02
+    try kappa=0.0099: J=-1.5104 (cur -1.5043) blobB=11.20 iron=769kg ferrite=220kg |nu|=1.36e-02
+[it   8] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  11.178 mT  iron=  769.9 kg  ferrite=  218.3 kg  moved=15.00/5.13 kg  demag=0.13  resid=0.162 mT  J=-1.5113  kappa=0.025  (74s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0169: J=-1.5093 (cur -1.5068) blobB=11.95 iron=762kg ferrite=216kg |nu|=1.36e-02
+    try kappa=0.0101: J=-1.5101 (cur -1.5068) blobB=11.97 iron=761kg ferrite=218kg |nu|=1.39e-02
+    try kappa=0.0061: J=-1.5103 (cur -1.5068) blobB=11.97 iron=761kg ferrite=219kg |nu|=1.40e-02
+    try kappa=0.0036: J=-1.5101 (cur -1.5068) blobB=11.99 iron=761kg ferrite=220kg |nu|=1.44e-02
+[it   9] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  11.974 mT  iron=  761.0 kg  ferrite=  219.2 kg  moved=15.00/3.30 kg  demag=0.13  resid=0.189 mT  J=-1.5103  kappa=0.009  (122s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0091: J=-1.5111 (cur -1.5063) blobB=12.89 iron=753kg ferrite=219kg |nu|=1.42e-02
+    try kappa=0.0055: J=-1.5108 (cur -1.5063) blobB=12.89 iron=752kg ferrite=220kg |nu|=1.42e-02
+[it  10] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  12.885 mT  iron=  752.6 kg  ferrite=  219.3 kg  moved=15.00/3.81 kg  demag=0.13  resid=0.216 mT  J=-1.5111  kappa=0.014  (91s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0137: J=-1.5111 (cur -1.5065) blobB=13.98 iron=745kg ferrite=218kg |nu|=1.37e-02
+    try kappa=0.0082: J=-1.5105 (cur -1.5065) blobB=13.99 iron=744kg ferrite=220kg |nu|=1.39e-02
+[it  11] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  13.976 mT  iron=  744.9 kg  ferrite=  218.4 kg  moved=15.00/4.72 kg  demag=0.14  resid=0.242 mT  J=-1.5111  kappa=0.020  (95s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0178: J=-1.5093 (cur -1.5056) blobB=15.27 iron=738kg ferrite=216kg |nu|=1.36e-02
+    try kappa=0.0107: J=-1.5089 (cur -1.5056) blobB=15.33 iron=737kg ferrite=219kg |nu|=1.38e-02
+[it  12] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  15.267 mT  iron=  738.1 kg  ferrite=  216.5 kg  moved=15.00/5.43 kg  demag=0.14  resid=0.266 mT  J=-1.5093  kappa=0.027  (77s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0181: J=-1.5076 (cur -1.5028) blobB=16.66 iron=732kg ferrite=215kg |nu|=1.34e-02
+    try kappa=0.0109: J=-1.5067 (cur -1.5028) blobB=16.72 iron=731kg ferrite=217kg |nu|=1.36e-02
+[it  13] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  16.657 mT  iron=  731.9 kg  ferrite=  214.6 kg  moved=15.00/5.37 kg  demag=0.14  resid=0.278 mT  J=-1.5076  kappa=0.027  (71s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0185: J=-1.5079 (cur -1.5005) blobB=18.15 iron=726kg ferrite=213kg |nu|=1.33e-02
+    try kappa=0.0111: J=-1.5066 (cur -1.5005) blobB=18.20 iron=726kg ferrite=215kg |nu|=1.35e-02
+[it  14] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  18.149 mT  iron=  726.4 kg  ferrite=  212.6 kg  moved=15.00/5.29 kg  demag=0.14  resid=0.290 mT  J=-1.5079  kappa=0.028  (80s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0191: J=-1.5099 (cur -1.5003) blobB=20.18 iron=721kg ferrite=211kg |nu|=1.33e-02
+    try kappa=0.0114: J=-1.5081 (cur -1.5003) blobB=20.24 iron=721kg ferrite=213kg |nu|=1.34e-02
+[it  15] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  20.176 mT  iron=  721.5 kg  ferrite=  210.6 kg  moved=15.00/5.33 kg  demag=0.14  resid=0.266 mT  J=-1.5099  kappa=0.029  (80s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0201: J=-1.5166 (cur -1.4994) blobB=22.66 iron=717kg ferrite=209kg |nu|=1.34e-02
+    try kappa=0.0121: J=-1.5140 (cur -1.4994) blobB=22.72 iron=716kg ferrite=211kg |nu|=1.35e-02
+[it  16] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  22.663 mT  iron=  716.6 kg  ferrite=  208.8 kg  moved=15.00/5.43 kg  demag=0.14  resid=0.274 mT  J=-1.5166  kappa=0.030  (69s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0205: J=-1.5214 (cur -1.5035) blobB=24.11 iron=711kg ferrite=207kg |nu|=1.33e-02
+    try kappa=0.0123: J=-1.5188 (cur -1.5035) blobB=24.18 iron=710kg ferrite=209kg |nu|=1.35e-02
+[it  17] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  24.110 mT  iron=  711.2 kg  ferrite=  207.0 kg  moved=15.00/5.52 kg  demag=0.14  resid=0.305 mT  J=-1.5214  kappa=0.031  (72s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:45
+    try kappa=0.0211: J=-1.5238 (cur -1.5136) blobB=25.88 iron=706kg ferrite=206kg |nu|=1.36e-02
+    try kappa=0.0127: J=-1.5214 (cur -1.5136) blobB=25.97 iron=705kg ferrite=208kg |nu|=1.38e-02
+[it  18] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  25.882 mT  iron=  705.9 kg  ferrite=  205.6 kg  moved=15.00/5.79 kg  demag=0.14  resid=0.331 mT  J=-1.5238  kappa=0.032  (94s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0210: J=-1.5240 (cur -1.5142) blobB=28.38 iron=701kg ferrite=205kg |nu|=1.41e-02
+    try kappa=0.0126: J=-1.5216 (cur -1.5142) blobB=28.50 iron=700kg ferrite=207kg |nu|=1.42e-02
+[it  19] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  28.377 mT  iron=  700.7 kg  ferrite=  204.5 kg  moved=15.00/5.87 kg  demag=0.14  resid=0.361 mT  J=-1.5240  kappa=0.032  (88s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0210: J=-1.5262 (cur -1.5102) blobB=31.81 iron=695kg ferrite=204kg |nu|=1.34e-02
+    try kappa=0.0126: J=-1.5233 (cur -1.5102) blobB=31.86 iron=694kg ferrite=206kg |nu|=1.34e-02
+[it  20] F=inf $/voxel  N_green=0  N_smooth=2.1e+04  blobB=  31.808 mT  iron=  694.9 kg  ferrite=  203.8 kg  moved=15.00/5.99 kg  demag=0.14  resid=0.443 mT  J=-1.5262  kappa=0.031  (86s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0213: J=-1.5224 (cur -1.5069) blobB=34.62 iron=689kg ferrite=203kg |nu|=1.30e-02
+    try kappa=0.0128: J=-1.5185 (cur -1.5069) blobB=34.64 iron=688kg ferrite=205kg |nu|=1.28e-02
+[it  21] F=inf $/voxel  N_green=0  N_smooth=2.09e+04  blobB=  34.618 mT  iron=  688.6 kg  ferrite=  203.3 kg  moved=15.00/6.05 kg  demag=0.14  resid=0.494 mT  J=-1.5224  kappa=0.032  (78s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0213: J=-1.5159 (cur -1.5061) blobB=36.86 iron=682kg ferrite=203kg |nu|=1.34e-02
+    try kappa=0.0128: J=-1.5116 (cur -1.5061) blobB=36.76 iron=681kg ferrite=205kg |nu|=1.31e-02
+[it  22] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=  36.863 mT  iron=  681.7 kg  ferrite=  203.3 kg  moved=15.00/6.31 kg  demag=0.13  resid=0.531 mT  J=-1.5159  kappa=0.032  (75s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:44
+    try kappa=0.0212: J=-1.5079 (cur -1.5025) blobB=38.90 iron=674kg ferrite=204kg |nu|=1.37e-02
+    try kappa=0.0127: J=-1.5030 (cur -1.5025) blobB=38.80 iron=674kg ferrite=206kg |nu|=1.34e-02
+[it  23] F=inf $/voxel  N_green=0  N_smooth=2.07e+04  blobB=  38.902 mT  iron=  674.4 kg  ferrite=  203.7 kg  moved=15.00/6.50 kg  demag=0.13  resid=0.633 mT  J=-1.5079  kappa=0.032  (94s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0208: J=-1.5027 (cur -1.4954) blobB=40.23 iron=667kg ferrite=204kg |nu|=1.40e-02
+    try kappa=0.0125: J=-1.4969 (cur -1.4954) blobB=40.17 iron=666kg ferrite=206kg |nu|=1.37e-02
+[it  24] F=inf $/voxel  N_green=0  N_smooth=2.06e+04  blobB=  40.228 mT  iron=  666.7 kg  ferrite=  204.1 kg  moved=15.00/6.53 kg  demag=0.13  resid=0.712 mT  J=-1.5027  kappa=0.031  (81s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:46
+    try kappa=0.0208: J=-1.5040 (cur -1.4944) blobB=40.65 iron=662kg ferrite=202kg |nu|=7.26e-03
+    try kappa=0.0125: J=-1.4986 (cur -1.4944) blobB=40.60 iron=661kg ferrite=204kg |nu|=7.09e-03
+[it  25] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  40.652 mT  iron=  662.0 kg  ferrite=  201.9 kg  moved=9.33/4.50 kg  demag=0.14  resid=0.727 mT  J=-1.5040  kappa=0.031  (148s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:48
+    try kappa=0.0209: J=-1.5054 (cur -1.5014) blobB=41.00 iron=656kg ferrite=201kg |nu|=1.09e-02
+    try kappa=0.0126: J=-1.5081 (cur -1.5014) blobB=40.88 iron=657kg ferrite=201kg |nu|=5.44e-03
+    try kappa=0.0075: J=-1.5045 (cur -1.5014) blobB=40.85 iron=656kg ferrite=202kg |nu|=5.44e-03
+[it  26] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  40.882 mT  iron=  657.0 kg  ferrite=  201.0 kg  moved=7.83/2.98 kg  demag=0.13  resid=0.729 mT  J=-1.5081  kappa=0.019  (172s)
+    eta: 80 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:49
+    try kappa=0.0189: J=-1.5135 (cur -1.5066) blobB=41.25 iron=652kg ferrite=200kg |nu|=8.16e-03
+    try kappa=0.0113: J=-1.5083 (cur -1.5066) blobB=41.20 iron=651kg ferrite=201kg |nu|=8.16e-03
+[it  27] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  41.255 mT  iron=  652.1 kg  ferrite=  199.5 kg  moved=9.72/4.52 kg  demag=0.13  resid=0.742 mT  J=-1.5135  kappa=0.028  (153s)
+    eta: 81 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0211: J=-1.5185 (cur -1.5112) blobB=42.14 iron=646kg ferrite=199kg |nu|=1.22e-02
+    try kappa=0.0127: J=-1.5138 (cur -1.5112) blobB=42.14 iron=645kg ferrite=201kg |nu|=1.22e-02
+[it  28] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB=  42.139 mT  iron=  646.1 kg  ferrite=  199.2 kg  moved=12.60/6.11 kg  demag=0.13  resid=0.803 mT  J=-1.5185  kappa=0.032  (158s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0213: J=-1.5246 (cur -1.5128) blobB=43.26 iron=639kg ferrite=200kg |nu|=1.53e-02
+    try kappa=0.0128: J=-1.5206 (cur -1.5128) blobB=43.27 iron=638kg ferrite=202kg |nu|=1.50e-02
+[it  29] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB=  43.258 mT  iron=  639.2 kg  ferrite=  200.1 kg  moved=15.00/7.45 kg  demag=0.13  resid=0.874 mT  J=-1.5246  kappa=0.032  (104s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0220: J=-1.5441 (cur -1.5174) blobB=45.20 iron=632kg ferrite=202kg |nu|=1.57e-02
+    try kappa=0.0132: J=-1.5395 (cur -1.5174) blobB=45.21 iron=631kg ferrite=203kg |nu|=1.54e-02
+[it  30] F=inf $/voxel  N_green=0  N_smooth=2.06e+04  blobB=  45.197 mT  iron=  631.8 kg  ferrite=  201.5 kg  moved=15.00/7.89 kg  demag=0.13  resid=1.006 mT  J=-1.5441  kappa=0.033  (81s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0219: J=-1.5580 (cur -1.5315) blobB=48.01 iron=625kg ferrite=203kg |nu|=1.55e-02
+    try kappa=0.0131: J=-1.5541 (cur -1.5315) blobB=48.01 iron=624kg ferrite=205kg |nu|=1.53e-02
+[it  31] F=inf $/voxel  N_green=0  N_smooth=2.07e+04  blobB=  48.013 mT  iron=  625.3 kg  ferrite=  202.9 kg  moved=15.00/8.05 kg  demag=0.13  resid=1.156 mT  J=-1.5580  kappa=0.033  (89s)
+    eta: 89 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0211: J=-1.5610 (cur -1.5393) blobB=51.73 iron=620kg ferrite=205kg |nu|=1.58e-02
+    try kappa=0.0127: J=-1.5588 (cur -1.5393) blobB=51.81 iron=619kg ferrite=207kg |nu|=1.58e-02
+[it  32] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=  51.732 mT  iron=  619.8 kg  ferrite=  204.5 kg  moved=15.00/8.29 kg  demag=0.13  resid=1.309 mT  J=-1.5610  kappa=0.032  (84s)
+    eta: 89 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0213: J=-1.5650 (cur -1.5358) blobB=56.01 iron=614kg ferrite=207kg |nu|=1.59e-02
+    try kappa=0.0128: J=-1.5630 (cur -1.5358) blobB=56.14 iron=613kg ferrite=209kg |nu|=1.58e-02
+[it  33] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=  56.015 mT  iron=  614.4 kg  ferrite=  206.9 kg  moved=15.00/8.70 kg  demag=0.13  resid=1.434 mT  J=-1.5650  kappa=0.032  (77s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0227: J=-1.5598 (cur -1.5348) blobB=60.30 iron=609kg ferrite=210kg |nu|=1.54e-02
+    try kappa=0.0136: J=-1.5572 (cur -1.5348) blobB=60.40 iron=608kg ferrite=212kg |nu|=1.54e-02
+[it  34] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=  60.304 mT  iron=  608.8 kg  ferrite=  209.8 kg  moved=15.00/9.04 kg  demag=0.13  resid=1.514 mT  J=-1.5598  kappa=0.034  (86s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0228: J=-1.5461 (cur -1.5283) blobB=63.84 iron=603kg ferrite=213kg |nu|=1.59e-02
+    try kappa=0.0137: J=-1.5449 (cur -1.5283) blobB=63.91 iron=602kg ferrite=215kg |nu|=1.56e-02
+[it  35] F=inf $/voxel  N_green=0  N_smooth=2.07e+04  blobB=  63.842 mT  iron=  603.1 kg  ferrite=  213.0 kg  moved=15.00/8.88 kg  demag=0.13  resid=1.591 mT  J=-1.5461  kappa=0.034  (88s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0234: J=-1.5379 (cur -1.5189) blobB=67.79 iron=598kg ferrite=217kg |nu|=1.74e-02
+    try kappa=0.0140: J=-1.5380 (cur -1.5189) blobB=67.83 iron=597kg ferrite=219kg |nu|=1.69e-02
+[it  36] F=inf $/voxel  N_green=0  N_smooth=2.08e+04  blobB=  67.827 mT  iron=  596.6 kg  ferrite=  218.7 kg  moved=15.00/8.67 kg  demag=0.13  resid=1.680 mT  J=-1.5380  kappa=0.021  (84s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0211: J=-1.5299 (cur -1.5062) blobB=71.43 iron=590kg ferrite=223kg |nu|=1.79e-02
+    try kappa=0.0126: J=-1.5287 (cur -1.5062) blobB=71.43 iron=589kg ferrite=225kg |nu|=1.73e-02
+[it  37] F=inf $/voxel  N_green=0  N_smooth=2.07e+04  blobB=  71.433 mT  iron=  590.4 kg  ferrite=  223.4 kg  moved=15.00/9.06 kg  demag=0.12  resid=1.750 mT  J=-1.5299  kappa=0.032  (83s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0245: J=-1.5329 (cur -1.4998) blobB=74.40 iron=584kg ferrite=228kg |nu|=1.83e-02
+    try kappa=0.0147: J=-1.5316 (cur -1.4998) blobB=74.40 iron=583kg ferrite=230kg |nu|=1.77e-02
+[it  38] F=inf $/voxel  N_green=0  N_smooth=2.06e+04  blobB=  74.403 mT  iron=  584.5 kg  ferrite=  227.9 kg  moved=15.00/9.10 kg  demag=0.12  resid=1.799 mT  J=-1.5329  kappa=0.037  (80s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0251: J=-1.5401 (cur -1.5070) blobB=77.38 iron=579kg ferrite=233kg |nu|=1.88e-02
+    try kappa=0.0151: J=-1.5382 (cur -1.5070) blobB=77.36 iron=578kg ferrite=234kg |nu|=1.82e-02
+[it  39] F=inf $/voxel  N_green=0  N_smooth=2.06e+04  blobB=  77.380 mT  iron=  578.7 kg  ferrite=  232.6 kg  moved=15.00/9.29 kg  demag=0.12  resid=1.850 mT  J=-1.5401  kappa=0.038  (77s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0257: J=-1.5335 (cur -1.5132) blobB=79.81 iron=573kg ferrite=237kg |nu|=1.90e-02
+    try kappa=0.0154: J=-1.5311 (cur -1.5132) blobB=79.79 iron=572kg ferrite=239kg |nu|=1.84e-02
+[it  40] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB=  79.805 mT  iron=  572.7 kg  ferrite=  237.5 kg  moved=15.00/9.35 kg  demag=0.12  resid=1.893 mT  J=-1.5335  kappa=0.038  (78s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0262: J=-1.5202 (cur -1.5108) blobB=81.53 iron=567kg ferrite=243kg |nu|=1.95e-02
+    try kappa=0.0157: J=-1.5183 (cur -1.5108) blobB=81.54 iron=565kg ferrite=244kg |nu|=1.89e-02
+[it  41] F=inf $/voxel  N_green=0  N_smooth=2.03e+04  blobB=  81.528 mT  iron=  566.5 kg  ferrite=  242.6 kg  moved=15.00/9.44 kg  demag=0.12  resid=1.912 mT  J=-1.5202  kappa=0.039  (97s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0269: J=-1.5149 (cur -1.5036) blobB=83.60 iron=560kg ferrite=248kg |nu|=2.02e-02
+    try kappa=0.0161: J=-1.5121 (cur -1.5036) blobB=83.60 iron=559kg ferrite=250kg |nu|=1.96e-02
+[it  42] F=3865 $/voxel  N_green=1  N_smooth=2.04e+04  blobB=  83.601 mT  iron=  560.3 kg  ferrite=  248.0 kg  moved=15.00/9.85 kg  demag=0.12  resid=1.926 mT  J=-1.5149  kappa=0.040  (79s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0274: J=-1.5023 (cur -1.4944) blobB=86.00 iron=554kg ferrite=254kg |nu|=2.00e-02
+    try kappa=0.0164: J=-1.5002 (cur -1.4944) blobB=86.05 iron=553kg ferrite=255kg |nu|=1.98e-02
+[it  43] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  85.996 mT  iron=  554.2 kg  ferrite=  253.6 kg  moved=14.69/10.00 kg  demag=0.11  resid=1.947 mT  J=-1.5023  kappa=0.041  (107s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0282: J=-1.4968 (cur -1.4780) blobB=88.64 iron=548kg ferrite=259kg |nu|=2.00e-02
+    try kappa=0.0169: J=-1.4938 (cur -1.4780) blobB=88.67 iron=547kg ferrite=261kg |nu|=1.96e-02
+[it  44] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB=  88.642 mT  iron=  548.3 kg  ferrite=  259.4 kg  moved=14.64/10.00 kg  demag=0.12  resid=1.984 mT  J=-1.4968  kappa=0.042  (97s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0284: J=-1.4768 (cur -1.4690) blobB=91.06 iron=543kg ferrite=265kg |nu|=1.98e-02
+    try kappa=0.0170: J=-1.4745 (cur -1.4690) blobB=91.09 iron=542kg ferrite=267kg |nu|=1.96e-02
+[it  45] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  91.056 mT  iron=  542.6 kg  ferrite=  265.2 kg  moved=14.37/10.00 kg  demag=0.11  resid=2.008 mT  J=-1.4768  kappa=0.043  (79s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0282: J=-1.4560 (cur -1.4505) blobB=93.34 iron=537kg ferrite=271kg |nu|=1.98e-02
+    try kappa=0.0169: J=-1.4554 (cur -1.4505) blobB=93.36 iron=536kg ferrite=273kg |nu|=1.94e-02
+[it  46] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  93.341 mT  iron=  536.6 kg  ferrite=  271.2 kg  moved=14.58/10.00 kg  demag=0.10  resid=2.026 mT  J=-1.4560  kappa=0.042  (84s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0280: J=-1.4979 (cur -1.4302) blobB=95.82 iron=530kg ferrite=277kg |nu|=1.99e-02
+    try kappa=0.0168: J=-1.4986 (cur -1.4302) blobB=95.82 iron=529kg ferrite=279kg |nu|=1.92e-02
+[it  47] F=inf $/voxel  N_green=0  N_smooth=2.04e+04  blobB=  95.819 mT  iron=  528.8 kg  ferrite=  279.0 kg  moved=15.00/9.98 kg  demag=0.11  resid=2.044 mT  J=-1.4986  kappa=0.025  (102s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0252: J=-1.5054 (cur -1.4696) blobB=98.45 iron=522kg ferrite=286kg |nu|=1.92e-02
+    try kappa=0.0151: J=-1.5035 (cur -1.4696) blobB=98.49 iron=521kg ferrite=287kg |nu|=1.85e-02
+[it  48] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB=  98.453 mT  iron=  521.7 kg  ferrite=  285.5 kg  moved=14.98/10.00 kg  demag=0.10  resid=2.065 mT  J=-1.5054  kappa=0.038  (78s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0276: J=-1.5058 (cur -1.4733) blobB=101.08 iron=515kg ferrite=291kg |nu|=1.84e-02
+    try kappa=0.0166: J=-1.5038 (cur -1.4733) blobB=101.21 iron=513kg ferrite=293kg |nu|=1.83e-02
+[it  49] F=inf $/voxel  N_green=0  N_smooth=2.05e+04  blobB= 101.081 mT  iron=  514.6 kg  ferrite=  291.4 kg  moved=14.78/10.00 kg  demag=0.10  resid=2.087 mT  J=-1.5058  kappa=0.041  (83s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0286: J=-1.5191 (cur -1.4723) blobB=104.81 iron=507kg ferrite=297kg |nu|=1.70e-02
+    try kappa=0.0172: J=-1.5181 (cur -1.4723) blobB=104.94 iron=506kg ferrite=299kg |nu|=1.71e-02
+[it  50] F=inf $/voxel  N_green=0  N_smooth=2.07e+04  blobB= 104.808 mT  iron=  507.2 kg  ferrite=  297.2 kg  moved=14.58/10.00 kg  demag=0.10  resid=2.110 mT  J=-1.5191  kappa=0.043  (98s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0289: J=-1.5103 (cur -1.4695) blobB=107.91 iron=500kg ferrite=303kg |nu|=1.67e-02
+    try kappa=0.0173: J=-1.5104 (cur -1.4695) blobB=107.96 iron=499kg ferrite=305kg |nu|=1.68e-02
+[it  51] F=3914 $/voxel  N_green=1  N_smooth=2.05e+04  blobB= 107.960 mT  iron=  499.3 kg  ferrite=  305.0 kg  moved=13.87/10.00 kg  demag=0.10  resid=2.168 mT  J=-1.5104  kappa=0.026  (110s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0260: J=-1.4904 (cur -1.4653) blobB=110.31 iron=493kg ferrite=311kg |nu|=1.74e-02
+    try kappa=0.0156: J=-1.4899 (cur -1.4653) blobB=110.32 iron=492kg ferrite=313kg |nu|=1.72e-02
+[it  52] F=inf $/voxel  N_green=0  N_smooth=2.03e+04  blobB= 110.306 mT  iron=  493.2 kg  ferrite=  311.4 kg  moved=13.56/10.00 kg  demag=0.10  resid=2.205 mT  J=-1.4904  kappa=0.039  (80s)
+    eta: 83 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0286: J=-1.4792 (cur -1.4547) blobB=112.77 iron=489kg ferrite=317kg |nu|=1.82e-02
+    try kappa=0.0172: J=-1.4792 (cur -1.4547) blobB=112.79 iron=488kg ferrite=319kg |nu|=1.81e-02
+[it  53] F=3930 $/voxel  N_green=1  N_smooth=2.03e+04  blobB= 112.768 mT  iron=  488.9 kg  ferrite=  317.4 kg  moved=13.38/10.00 kg  demag=0.09  resid=2.236 mT  J=-1.4792  kappa=0.043  (106s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0293: J=-1.4637 (cur -1.4399) blobB=114.98 iron=485kg ferrite=324kg |nu|=1.87e-02
+    try kappa=0.0176: J=-1.4633 (cur -1.4399) blobB=114.99 iron=484kg ferrite=325kg |nu|=1.85e-02
+[it  54] F=inf $/voxel  N_green=0  N_smooth=2.02e+04  blobB= 114.980 mT  iron=  484.9 kg  ferrite=  323.6 kg  moved=13.70/10.00 kg  demag=0.09  resid=2.244 mT  J=-1.4637  kappa=0.044  (76s)
+    eta: 84 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0306: J=-1.4550 (cur -1.4265) blobB=117.11 iron=481kg ferrite=330kg |nu|=1.96e-02
+    try kappa=0.0183: J=-1.4522 (cur -1.4265) blobB=117.06 iron=480kg ferrite=332kg |nu|=1.91e-02
+[it  55] F=inf $/voxel  N_green=0  N_smooth=2.02e+04  blobB= 117.114 mT  iron=  481.0 kg  ferrite=  329.9 kg  moved=14.08/10.00 kg  demag=0.09  resid=2.252 mT  J=-1.4550  kappa=0.046  (110s)
+    eta: 97 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0309: J=-1.4580 (cur -1.4172) blobB=119.21 iron=477kg ferrite=336kg |nu|=2.04e-02
+    try kappa=0.0185: J=-1.4512 (cur -1.4172) blobB=119.14 iron=476kg ferrite=338kg |nu|=1.97e-02
+[it  56] F=inf $/voxel  N_green=0  N_smooth=2.01e+04  blobB= 119.210 mT  iron=  477.0 kg  ferrite=  336.4 kg  moved=14.18/10.00 kg  demag=0.09  resid=2.268 mT  J=-1.4580  kappa=0.046  (87s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0310: J=-1.4576 (cur -1.4190) blobB=121.02 iron=473kg ferrite=343kg |nu|=2.09e-02
+    try kappa=0.0186: J=-1.4529 (cur -1.4190) blobB=120.97 iron=472kg ferrite=345kg |nu|=2.01e-02
+[it  57] F=496.8 $/voxel  N_green=8  N_smooth=2e+04  blobB= 121.023 mT  iron=  472.8 kg  ferrite=  343.0 kg  moved=14.52/10.00 kg  demag=0.09  resid=2.267 mT  J=-1.4576  kappa=0.047  (83s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0316: J=-1.4482 (cur -1.4220) blobB=122.68 iron=469kg ferrite=350kg |nu|=2.16e-02
+    try kappa=0.0190: J=-1.4458 (cur -1.4220) blobB=122.63 iron=468kg ferrite=351kg |nu|=2.06e-02
+[it  58] F=3987 $/voxel  N_green=1  N_smooth=2e+04  blobB= 122.677 mT  iron=  468.7 kg  ferrite=  349.8 kg  moved=15.00/9.99 kg  demag=0.08  resid=2.261 mT  J=-1.4482  kappa=0.047  (103s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0323: J=-1.4432 (cur -1.4142) blobB=124.36 iron=465kg ferrite=356kg |nu|=2.11e-02
+    try kappa=0.0194: J=-1.4403 (cur -1.4142) blobB=124.31 iron=464kg ferrite=358kg |nu|=2.03e-02
+[it  59] F=inf $/voxel  N_green=0  N_smooth=2e+04  blobB= 124.361 mT  iron=  465.0 kg  ferrite=  356.4 kg  moved=15.00/9.59 kg  demag=0.08  resid=2.259 mT  J=-1.4432  kappa=0.048  (85s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0328: J=-1.4363 (cur -1.4071) blobB=126.07 iron=462kg ferrite=363kg |nu|=2.06e-02
+    try kappa=0.0197: J=-1.4338 (cur -1.4071) blobB=126.04 iron=461kg ferrite=364kg |nu|=1.99e-02
+[it  60] F=4011 $/voxel  N_green=1  N_smooth=2e+04  blobB= 126.071 mT  iron=  461.7 kg  ferrite=  362.6 kg  moved=15.00/9.25 kg  demag=0.08  resid=2.274 mT  J=-1.4363  kappa=0.049  (99s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0334: J=-1.4294 (cur -1.3979) blobB=127.91 iron=458kg ferrite=369kg |nu|=2.13e-02
+    try kappa=0.0200: J=-1.4262 (cur -1.3979) blobB=127.86 iron=457kg ferrite=371kg |nu|=2.05e-02
+[it  61] F=4024 $/voxel  N_green=1  N_smooth=2e+04  blobB= 127.914 mT  iron=  458.4 kg  ferrite=  369.1 kg  moved=15.00/9.23 kg  demag=0.08  resid=2.286 mT  J=-1.4294  kappa=0.050  (88s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0339: J=-1.4189 (cur -1.3859) blobB=129.70 iron=454kg ferrite=376kg |nu|=2.26e-02
+    try kappa=0.0204: J=-1.4159 (cur -1.3859) blobB=129.64 iron=453kg ferrite=378kg |nu|=2.14e-02
+[it  62] F=4037 $/voxel  N_green=1  N_smooth=2e+04  blobB= 129.699 mT  iron=  454.4 kg  ferrite=  376.2 kg  moved=15.00/9.62 kg  demag=0.08  resid=2.282 mT  J=-1.4189  kappa=0.051  (73s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0336: J=-1.4212 (cur -1.3744) blobB=131.76 iron=450kg ferrite=384kg |nu|=2.35e-02
+    try kappa=0.0201: J=-1.4170 (cur -1.3744) blobB=131.69 iron=449kg ferrite=385kg |nu|=2.21e-02
+[it  63] F=4052 $/voxel  N_green=1  N_smooth=2.02e+04  blobB= 131.756 mT  iron=  450.5 kg  ferrite=  383.7 kg  moved=15.00/9.90 kg  demag=0.07  resid=2.272 mT  J=-1.4212  kappa=0.050  (91s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0324: J=-1.4147 (cur -1.3669) blobB=133.86 iron=447kg ferrite=391kg |nu|=2.35e-02
+    try kappa=0.0195: J=-1.4122 (cur -1.3669) blobB=133.82 iron=446kg ferrite=393kg |nu|=2.21e-02
+    warning: polynomial projection is off by up to 0.518 mT inside the green blob (> dB_band/4 = 0.075 mT): mesh too coarse for the band; see resid= below
+[it  64] F=4068 $/voxel  N_green=1  N_smooth=2.02e+04  blobB= 158.543 mT  iron=  446.9 kg  ferrite=  391.4 kg  moved=14.83/10.00 kg  demag=0.07  resid=0.518 mT  J=-1.4147  kappa=0.049  (85s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0132: J=4.5132 (cur 4.7651) blobB=159.20 iron=446kg ferrite=395kg |nu|=2.92e-03
+    try kappa=0.0079: J=4.5142 (cur 4.7651) blobB=159.20 iron=445kg ferrite=396kg |nu|=7.69e-04
+[it  65] F=2038 $/voxel  N_green=2  N_smooth=54.1  blobB= 159.224 mT  iron=  445.9 kg  ferrite=  394.8 kg  moved=5.60/3.63 kg  demag=0.07  resid=0.021 mT  J=4.5132  kappa=0.020  (111s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0128: J=5.8942 (cur 6.1566) blobB=159.12 iron=446kg ferrite=394kg |nu|=1.18e-02
+    try kappa=0.0077: J=6.0002 (cur 6.1566) blobB=159.16 iron=446kg ferrite=394kg |nu|=6.97e-03
+[it  66] F=2037 $/voxel  N_green=2  N_smooth=13.6  blobB= 159.123 mT  iron=  446.3 kg  ferrite=  394.1 kg  moved=1.06/0.91 kg  demag=0.07  resid=0.021 mT  J=5.8942  kappa=0.019  (85s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0133: J=5.8614 (cur 5.8801) blobB=159.12 iron=446kg ferrite=394kg |nu|=1.33e-02
+    try kappa=0.0080: J=5.9311 (cur 5.8801) blobB=159.15 iron=446kg ferrite=394kg |nu|=8.54e-03
+[it  67] F=2037 $/voxel  N_green=2  N_smooth=14  blobB= 159.116 mT  iron=  446.5 kg  ferrite=  393.8 kg  moved=0.51/0.42 kg  demag=0.07  resid=0.021 mT  J=5.8614  kappa=0.020  (68s)
+    eta: 87 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0133: J=5.8552 (cur 5.8569) blobB=159.12 iron=447kg ferrite=393kg |nu|=1.35e-02
+    try kappa=0.0080: J=5.9228 (cur 5.8569) blobB=159.15 iron=447kg ferrite=394kg |nu|=8.68e-03
+[it  68] F=2037 $/voxel  N_green=2  N_smooth=14.1  blobB= 159.117 mT  iron=  446.7 kg  ferrite=  393.5 kg  moved=0.51/0.40 kg  demag=0.07  resid=0.020 mT  J=5.8552  kappa=0.020  (69s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0133: J=5.8411 (cur 5.8559) blobB=159.11 iron=447kg ferrite=393kg |nu|=1.34e-02
+    try kappa=0.0080: J=5.9219 (cur 5.8559) blobB=159.15 iron=447kg ferrite=393kg |nu|=8.69e-03
+[it  69] F=2037 $/voxel  N_green=2  N_smooth=14.3  blobB= 159.112 mT  iron=  446.9 kg  ferrite=  393.2 kg  moved=0.49/0.41 kg  demag=0.07  resid=0.020 mT  J=5.8411  kappa=0.020  (68s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0133: J=5.8381 (cur 5.8379) blobB=159.11 iron=447kg ferrite=393kg |nu|=1.35e-02
+    try kappa=0.0080: J=5.9152 (cur 5.8379) blobB=159.15 iron=447kg ferrite=393kg |nu|=8.78e-03
+    try kappa=0.0048: J=5.9604 (cur 5.8379) blobB=159.18 iron=447kg ferrite=393kg |nu|=5.88e-03
+    try kappa=0.0029: J=5.9787 (cur 5.8379) blobB=159.19 iron=447kg ferrite=393kg |nu|=4.07e-03
+    try kappa=0.0017: J=5.9862 (cur 5.8379) blobB=159.19 iron=447kg ferrite=393kg |nu|=2.96e-03
+    try kappa=0.0010: J=5.9899 (cur 5.8379) blobB=159.19 iron=447kg ferrite=394kg |nu|=2.29e-03
+    try kappa=0.0006: J=5.9919 (cur 5.8379) blobB=159.19 iron=447kg ferrite=394kg |nu|=1.88e-03
+    try kappa=0.0004: J=5.9931 (cur 5.8379) blobB=159.19 iron=447kg ferrite=394kg |nu|=1.64e-03
+    try kappa=0.0002: J=5.9938 (cur 5.8379) blobB=159.20 iron=447kg ferrite=394kg |nu|=1.49e-03
+    try kappa=0.0001: J=5.9942 (cur 5.8379) blobB=159.20 iron=447kg ferrite=394kg |nu|=1.40e-03
+[it 70] no descent step found (kappa=8.04e-05); retrying with more damping (lm=1.0e-04)
+    try kappa=0.0133: J=5.8380 (cur 5.8379) blobB=159.11 iron=447kg ferrite=393kg |nu|=1.35e-02
+    try kappa=0.0080: J=5.8586 (cur 5.8379) blobB=159.12 iron=447kg ferrite=393kg |nu|=8.35e-03
+    try kappa=0.0048: J=5.7722 (cur 5.8379) blobB=159.06 iron=447kg ferrite=393kg |nu|=4.18e-03
+    try kappa=0.0029: J=5.9787 (cur 5.8379) blobB=159.19 iron=447kg ferrite=393kg |nu|=4.07e-03
+[it  71] F=1018 $/voxel  N_green=4  N_smooth=15.3  blobB= 134.349 mT  iron=  447.0 kg  ferrite=  392.9 kg  moved=0.45/0.34 kg  demag=0.07  resid=2.268 mT  J=5.7722  kappa=0.007  (140s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0072: J=-1.3854 (cur -1.3523) blobB=136.01 iron=441kg ferrite=402kg |nu|=1.88e-02
+    try kappa=0.0043: J=-1.3815 (cur -1.3523) blobB=135.92 iron=442kg ferrite=403kg |nu|=1.86e-02
+[it  72] F=2044 $/voxel  N_green=2  N_smooth=1.99e+04  blobB= 136.007 mT  iron=  440.8 kg  ferrite=  402.4 kg  moved=14.02/9.99 kg  demag=0.07  resid=2.257 mT  J=-1.3854  kappa=0.011  (146s)
+    eta: 85 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0108: J=-1.3680 (cur -1.3335) blobB=137.70 iron=435kg ferrite=412kg |nu|=1.93e-02
+    try kappa=0.0065: J=-1.3652 (cur -1.3335) blobB=137.64 iron=435kg ferrite=412kg |nu|=1.85e-02
+[it  73] F=2053 $/voxel  N_green=2  N_smooth=1.99e+04  blobB= 158.941 mT  iron=  435.2 kg  ferrite=  411.9 kg  moved=13.77/10.00 kg  demag=0.07  resid=0.217 mT  J=-1.3680  kappa=0.016  (121s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0146: J=5.6748 (cur 5.1920) blobB=158.18 iron=435kg ferrite=408kg |nu|=7.91e-04
+    try kappa=0.0088: J=5.5300 (cur 5.1920) blobB=158.48 iron=435kg ferrite=409kg |nu|=7.91e-04
+    try kappa=0.0053: J=5.3079 (cur 5.1920) blobB=158.69 iron=435kg ferrite=410kg |nu|=7.91e-04
+    try kappa=0.0032: J=5.2078 (cur 5.1920) blobB=158.82 iron=435kg ferrite=411kg |nu|=7.91e-04
+    try kappa=0.0019: J=5.1924 (cur 5.1920) blobB=158.89 iron=435kg ferrite=412kg |nu|=7.91e-04
+    try kappa=0.0011: J=5.1906 (cur 5.1920) blobB=158.94 iron=435kg ferrite=412kg |nu|=7.91e-04
+    try kappa=0.0007: J=5.1907 (cur 5.1920) blobB=158.93 iron=435kg ferrite=412kg |nu|=3.96e-04
+[it  74] F=2053 $/voxel  N_green=2  N_smooth=28.2  blobB= 158.938 mT  iron=  435.2 kg  ferrite=  411.8 kg  moved=0.28/0.19 kg  demag=0.07  resid=0.217 mT  J=5.1906  kappa=0.002  (221s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0017: J=5.1800 (cur 5.1820) blobB=158.94 iron=435kg ferrite=412kg |nu|=1.19e-03
+    try kappa=0.0010: J=5.1802 (cur 5.1820) blobB=158.93 iron=435kg ferrite=412kg |nu|=5.94e-04
+[it  75] F=2053 $/voxel  N_green=2  N_smooth=28.5  blobB= 158.936 mT  iron=  435.1 kg  ferrite=  411.7 kg  moved=0.37/0.25 kg  demag=0.07  resid=0.217 mT  J=5.1800  kappa=0.003  (86s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0026: J=5.1695 (cur 5.1735) blobB=158.92 iron=435kg ferrite=411kg |nu|=8.90e-04
+    try kappa=0.0015: J=5.1734 (cur 5.1735) blobB=158.96 iron=435kg ferrite=412kg |nu|=8.90e-04
+[it  76] F=2052 $/voxel  N_green=2  N_smooth=28.7  blobB= 158.920 mT  iron=  434.8 kg  ferrite=  411.5 kg  moved=0.67/0.40 kg  demag=0.07  resid=0.217 mT  J=5.1695  kappa=0.004  (92s)
+    eta: 88 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0038: J=5.1264 (cur 5.1249) blobB=158.88 iron=434kg ferrite=411kg |nu|=1.34e-03
+    try kappa=0.0023: J=5.1233 (cur 5.1249) blobB=158.94 iron=435kg ferrite=411kg |nu|=1.34e-03
+    try kappa=0.0014: J=5.1234 (cur 5.1249) blobB=158.92 iron=435kg ferrite=411kg |nu|=6.68e-04
+[it  77] F=2052 $/voxel  N_green=2  N_smooth=30  blobB= 158.941 mT  iron=  434.6 kg  ferrite=  411.5 kg  moved=0.54/0.34 kg  demag=0.07  resid=0.217 mT  J=5.1233  kappa=0.003  (114s)
+    eta: 91 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0035: J=5.1805 (cur 5.1827) blobB=158.90 iron=434kg ferrite=411kg |nu|=2.00e-03
+    try kappa=0.0021: J=5.1819 (cur 5.1827) blobB=158.90 iron=434kg ferrite=411kg |nu|=1.00e-03
+[it  78] F=2051 $/voxel  N_green=2  N_smooth=28.3  blobB= 158.902 mT  iron=  434.4 kg  ferrite=  411.1 kg  moved=0.79/0.53 kg  demag=0.07  resid=0.217 mT  J=5.1805  kappa=0.005  (94s)
+    eta: 92 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0052: J=5.1436 (cur 5.0702) blobB=159.20 iron=434kg ferrite=413kg |nu|=7.59e-04
+    try kappa=0.0031: J=5.1381 (cur 5.0702) blobB=159.18 iron=434kg ferrite=413kg |nu|=7.51e-04
+    try kappa=0.0019: J=5.1054 (cur 5.0702) blobB=159.10 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0011: J=5.0844 (cur 5.0702) blobB=159.05 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0007: J=5.0740 (cur 5.0702) blobB=159.01 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0004: J=5.0706 (cur 5.0702) blobB=159.00 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0002: J=5.0702 (cur 5.0702) blobB=158.98 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0001: J=5.0701 (cur 5.0702) blobB=158.98 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0001: J=5.0701 (cur 5.0702) blobB=158.97 iron=434kg ferrite=412kg |nu|=7.51e-04
+    try kappa=0.0001: J=5.0700 (cur 5.0702) blobB=158.97 iron=434kg ferrite=412kg |nu|=7.51e-04
+[it  79] F=2052 $/voxel  N_green=2  N_smooth=31.7  blobB= 158.971 mT  iron=  434.3 kg  ferrite=  411.5 kg  moved=0.53/0.42 kg  demag=0.07  resid=0.217 mT  J=5.0700  kappa=0.000  (289s)
+    eta: 94 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0001: J=5.2686 (cur 5.2671) blobB=158.99 iron=434kg ferrite=412kg |nu|=2.82e-04
+    try kappa=0.0000: J=5.2687 (cur 5.2671) blobB=158.99 iron=434kg ferrite=412kg |nu|=2.82e-04
+    try kappa=0.0000: J=5.2688 (cur 5.2671) blobB=158.99 iron=434kg ferrite=412kg |nu|=2.82e-04
+    try kappa=0.0000: J=5.2688 (cur 5.2671) blobB=158.99 iron=434kg ferrite=412kg |nu|=2.82e-04
+[it 80] no descent step found (kappa=1.02e-05); retrying with more damping (lm=1.0e-04)
+    try kappa=0.0146: J=5.8216 (cur 5.2671) blobB=158.19 iron=434kg ferrite=407kg |nu|=7.04e-05
+    try kappa=0.0087: J=5.6400 (cur 5.2671) blobB=158.50 iron=434kg ferrite=409kg |nu|=7.04e-05
+    try kappa=0.0052: J=5.3966 (cur 5.2671) blobB=158.69 iron=434kg ferrite=410kg |nu|=7.04e-05
+    try kappa=0.0031: J=5.2854 (cur 5.2671) blobB=158.81 iron=434kg ferrite=411kg |nu|=7.04e-05
+    try kappa=0.0019: J=5.2644 (cur 5.2671) blobB=158.89 iron=434kg ferrite=411kg |nu|=2.11e-04
+    try kappa=0.0011: J=5.2599 (cur 5.2671) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.41e-04
+    try kappa=0.0007: J=5.2625 (cur 5.2671) blobB=158.94 iron=434kg ferrite=411kg |nu|=7.04e-05
+[it  81] F=2051 $/voxel  N_green=2  N_smooth=26.2  blobB= 158.921 mT  iron=  434.2 kg  ferrite=  411.2 kg  moved=0.46/0.32 kg  demag=0.07  resid=0.217 mT  J=5.2599  kappa=0.002  (221s)
+    eta: 111 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0017: J=5.1254 (cur 5.1194) blobB=158.86 iron=434kg ferrite=411kg |nu|=1.06e-04
+    try kappa=0.0010: J=5.1228 (cur 5.1194) blobB=158.89 iron=434kg ferrite=411kg |nu|=1.06e-04
+    try kappa=0.0006: J=5.1207 (cur 5.1194) blobB=158.91 iron=434kg ferrite=411kg |nu|=1.06e-04
+    try kappa=0.0004: J=5.1194 (cur 5.1194) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.06e-04
+    try kappa=0.0002: J=5.1191 (cur 5.1194) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.06e-04
+    try kappa=0.0001: J=5.1192 (cur 5.1194) blobB=158.92 iron=434kg ferrite=411kg |nu|=5.28e-05
+[it  82] F=2051 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.921 mT  iron=  434.2 kg  ferrite=  411.2 kg  moved=0.05/0.03 kg  demag=0.07  resid=0.217 mT  J=5.1191  kappa=0.000  (172s)
+    eta: 114 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0003: J=5.1190 (cur 5.1193) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.58e-04
+    try kappa=0.0002: J=5.1190 (cur 5.1193) blobB=158.92 iron=434kg ferrite=411kg |nu|=7.92e-05
+[it  83] F=2051 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.921 mT  iron=  434.2 kg  ferrite=  411.2 kg  moved=0.08/0.05 kg  demag=0.07  resid=0.217 mT  J=5.1190  kappa=0.000  (69s)
+    eta: 114 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0005: J=5.1187 (cur 5.1192) blobB=158.92 iron=434kg ferrite=411kg |nu|=2.38e-04
+    try kappa=0.0003: J=5.1188 (cur 5.1192) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.19e-04
+[it  84] F=2051 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.921 mT  iron=  434.1 kg  ferrite=  411.2 kg  moved=0.12/0.07 kg  demag=0.07  resid=0.217 mT  J=5.1187  kappa=0.001  (63s)
+    eta: 114 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0007: J=5.1183 (cur 5.1191) blobB=158.92 iron=434kg ferrite=411kg |nu|=3.57e-04
+    try kappa=0.0004: J=5.1185 (cur 5.1191) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.78e-04
+[it  85] F=2051 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.921 mT  iron=  434.1 kg  ferrite=  411.1 kg  moved=0.17/0.10 kg  demag=0.07  resid=0.217 mT  J=5.1183  kappa=0.001  (64s)
+    eta: 114 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0011: J=5.1177 (cur 5.1188) blobB=158.92 iron=434kg ferrite=411kg |nu|=5.35e-04
+    try kappa=0.0007: J=5.1183 (cur 5.1188) blobB=158.92 iron=434kg ferrite=411kg |nu|=2.67e-04
+[it  86] F=2051 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.921 mT  iron=  433.9 kg  ferrite=  411.1 kg  moved=0.26/0.16 kg  demag=0.07  resid=0.216 mT  J=5.1177  kappa=0.002  (64s)
+    eta: 114 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0017: J=5.1165 (cur 5.1182) blobB=158.92 iron=434kg ferrite=411kg |nu|=8.02e-04
+    try kappa=0.0010: J=5.1176 (cur 5.1182) blobB=158.92 iron=434kg ferrite=411kg |nu|=4.01e-04
+[it  87] F=2050 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.922 mT  iron=  433.8 kg  ferrite=  411.0 kg  moved=0.39/0.23 kg  demag=0.07  resid=0.216 mT  J=5.1165  kappa=0.003  (64s)
+    eta: 94 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0025: J=5.1153 (cur 5.1179) blobB=158.92 iron=434kg ferrite=411kg |nu|=1.20e-03
+    try kappa=0.0015: J=5.1173 (cur 5.1179) blobB=158.91 iron=434kg ferrite=411kg |nu|=6.02e-04
+[it  88] F=2050 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.923 mT  iron=  433.5 kg  ferrite=  410.9 kg  moved=0.58/0.35 kg  demag=0.07  resid=0.216 mT  J=5.1153  kappa=0.004  (76s)
+    eta: 92 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0038: J=5.1140 (cur 5.1180) blobB=158.92 iron=433kg ferrite=411kg |nu|=1.81e-03
+    try kappa=0.0023: J=5.1173 (cur 5.1180) blobB=158.91 iron=433kg ferrite=411kg |nu|=9.03e-04
+[it  89] F=2049 $/voxel  N_green=2  N_smooth=30.1  blobB= 158.923 mT  iron=  433.2 kg  ferrite=  410.7 kg  moved=0.87/0.52 kg  demag=0.07  resid=0.216 mT  J=5.1140  kappa=0.006  (75s)
+    eta: 86 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0056: J=5.1084 (cur 5.1145) blobB=158.92 iron=433kg ferrite=410kg |nu|=2.71e-03
+    try kappa=0.0034: J=5.1141 (cur 5.1145) blobB=158.90 iron=433kg ferrite=410kg |nu|=1.35e-03
+[it  90] F=2048 $/voxel  N_green=2  N_smooth=30.2  blobB= 158.921 mT  iron=  432.6 kg  ferrite=  410.4 kg  moved=1.30/0.79 kg  demag=0.07  resid=0.216 mT  J=5.1084  kappa=0.008  (78s)
+    eta: 78 s/it | expected finish unknown (no comparable earlier run) | latest finish Tue 03:50
+    try kappa=0.0085: J=5.1851 (cur 5.1014) blobB=159.20 iron=432kg ferrite=412kg |nu|=3.92e-03
+    try kappa=0.0051: J=5.1857 (cur 5.1014) blobB=159.20 iron=432kg ferrite=412kg |nu|=1.09e-03
+    try kappa=0.0030: J=5.1877 (cur 5.1014) blobB=159.20 iron=432kg ferrite=412kg |nu|=6.40e-04
+    try kappa=0.0018: J=5.1604 (cur 5.1014) blobB=159.14 iron=432kg ferrite=412kg |nu|=1.02e-03
+    try kappa=0.0011: J=5.1392 (cur 5.1014) blobB=159.09 iron=432kg ferrite=411kg |nu|=1.02e-03
+    try kappa=0.0007: J=5.1245 (cur 5.1014) blobB=159.06 iron=432kg ferrite=411kg |nu|=1.02e-03
+    try kappa=0.0004: J=5.1157 (cur 5.1014) blobB=159.04 iron=432kg ferrite=411kg |nu|=1.02e-03
+    try kappa=0.0002: J=5.1107 (cur 5.1014) blobB=159.02 iron=432kg ferrite=411kg |nu|=1.02e-03
+    try kappa=0.0001: J=5.1093 (cur 5.1014) blobB=159.02 iron=432kg ferrite=411kg |nu|=1.02e-03
+    try kappa=0.0001: J=5.1084 (cur 5.1014) blobB=159.01 iron=432kg ferrite=411kg |nu|=1.02e-03
+[it 91] no descent step found (kappa=5.12e-05); retrying with more damping (lm=1.0e-04)
+    try kappa=0.0152: J=5.3818 (cur 5.1014) blobB=159.88 iron=432kg ferrite=415kg |nu|=6.35e-05
+    try kappa=0.0091: J=5.3639 (cur 5.1014) blobB=159.53 iron=432kg ferrite=413kg |nu|=2.54e-04
+    try kappa=0.0055: J=5.2230 (cur 5.1014) blobB=159.27 iron=432kg ferrite=412kg |nu|=2.54e-04
+    try kappa=0.0033: J=5.1632 (cur 5.1014) blobB=159.15 iron=432kg ferrite=412kg |nu|=6.35e-05
+    try kappa=0.0020: J=5.1262 (cur 5.1014) blobB=159.06 iron=432kg ferrite=411kg |nu|=6.35e-05
+    try kappa=0.0012: J=5.1062 (cur 5.1014) blobB=159.01 iron=432kg ferrite=411kg |nu|=6.35e-05
+    try kappa=0.0007: J=5.1041 (cur 5.1014) blobB=158.97 iron=433kg ferrite=411kg |nu|=6.35e-05
+    try kappa=0.0004: J=5.1031 (cur 5.1014) blobB=158.95 iron=433kg ferrite=411kg |nu|=6.35e-05
+    try kappa=0.0003: J=5.1022 (cur 5.1014) blobB=158.94 iron=433kg ferrite=411kg |nu|=6.35e-05
+    try kappa=0.0002: J=5.1020 (cur 5.1014) blobB=158.94 iron=433kg ferrite=411kg |nu|=6.35e-05
+[it 92] no descent step found (kappa=9.17e-05); retrying with more damping (lm=1.0e-03)
+    try kappa=0.0163: J=5.3566 (cur 5.1014) blobB=159.92 iron=432kg ferrite=415kg |nu|=3.97e-06
+    try kappa=0.0098: J=5.3983 (cur 5.1014) blobB=159.59 iron=432kg ferrite=414kg |nu|=1.59e-05
+    try kappa=0.0059: J=5.2400 (cur 5.1014) blobB=159.32 iron=432kg ferrite=412kg |nu|=1.59e-05
+    try kappa=0.0035: J=5.1678 (cur 5.1014) blobB=159.16 iron=432kg ferrite=412kg |nu|=3.97e-06
+    try kappa=0.0021: J=5.1284 (cur 5.1014) blobB=159.06 iron=432kg ferrite=411kg |nu|=3.97e-06
+    try kappa=0.0013: J=5.1064 (cur 5.1014) blobB=159.01 iron=432kg ferrite=411kg |nu|=3.97e-06
+    try kappa=0.0008: J=5.1040 (cur 5.1014) blobB=158.97 iron=433kg ferrite=411kg |nu|=3.97e-06
+    try kappa=0.0005: J=5.1028 (cur 5.1014) blobB=158.95 iron=433kg ferrite=411kg |nu|=3.97e-06
+    try kappa=0.0003: J=5.1020 (cur 5.1014) blobB=158.94 iron=433kg ferrite=411kg |nu|=3.97e-06
+    try kappa=0.0002: J=5.1018 (cur 5.1014) blobB=158.93 iron=433kg ferrite=410kg |nu|=3.97e-06
+[it 93] no descent step found (kappa=9.88e-05); stopping
+finished: no descent step after 90 iterations, 2.74 h, 501 field solves

@@ -1,0 +1,20 @@
+{
+ "state": "finished: time budget",
+ "it": 137,
+ "iter_max": 150,
+ "started": "Tue 00:20",
+ "elapsed_h": 3.4972596238719094,
+ "s_per_it": 39.05008506774902,
+ "expected_its": null,
+ "eta_expected": null,
+ "eta_latest": "Tue 03:50",
+ "deadline": "Tue 03:50",
+ "mean_mT": 159.29362697163685,
+ "N_green": 2,
+ "F": 2316.4027005007947,
+ "iron_kg": 537.5680408339305,
+ "ferrite_kg": 519.223106444576,
+ "solves": 1006,
+ "tries": 345,
+ "updated": "2026-10-06 03:50:35"
+}

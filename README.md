@@ -47,18 +47,18 @@ Outputs per iteration in `results/<run>/`:
 
 | file | view with |
 |---|---|
-| `viewer.html` | any browser: iron (grey), ferrite +z (red), ferrite −z (blue), largest green component (translucent green), envelope (blue box); slider/play over all iterations |
-| `iter_XXXX.png` | y=0 slice: \|B\| with the band edges, iron fraction, ferrite fraction × polarity |
-| `iter_XXXX.vtu` | ParaView: psi, psi_f, iron and ferrite fractions, polarity, B, \|B\| on the 1/8 mesh (use Reflect filter for full) |
+| `viewer.html` | any browser: iron (grey), ferrite coloured by m_z (red +z, white transverse, blue −z) with black direction arrows, largest green component (translucent green), envelope (blue box), corridor (dashed); axes x red, y green, z blue; slider/play over all iterations |
+| `iter_XXXX.png` | y=0 slice: \|B\| with the band edges, iron fraction, ferrite fraction × m_z with direction arrows |
+| `iter_XXXX.vtu` | ParaView: psi, psi_f, iron and ferrite fractions, magnetization direction m, B, \|B\| on the 1/8 mesh (use Reflect filter for full) |
 | `history.png`, `history.csv` | F, F_smooth, N_green, N_smooth, blob mean field, cost, cost_fe, cost_f, masses, demag_frac, residual, J per iteration |
 | `run.log` | line-search trace, `eta:` line per iteration |
 | `status.json` | current state, s/it, expected / latest finish |
-| `psi_latest.npy`, `psif_latest.npy`, `pol_latest.npy` | checkpoint after every accepted step (iron level set, ferrite level set, polarities) |
-| `*_final.npy`, `mask_final.npy` | final state; material mask on the viewer grid (0 air, 1 iron, 2 ferrite +z, 3 ferrite −z) |
+| `psi_latest.npy`, `psif_latest.npy`, `mdir_latest.npy` | checkpoint after every accepted step (iron level set, ferrite level set, directions) |
+| `*_final.npy`, `mask_final.npy` | final state; material mask on the viewer grid (0 air, 1 iron, 2 ferrite m_z ≥ 0, 3 ferrite m_z < 0) |
 
 ## Problem
 
-Design domain: the 1/8 design box minus the patient/bed keep-out envelope. Anywhere in it an element can be air, iron or ferrite (magnetized +z or −z). Free-floating pieces are allowed; no manufacturability constraint yet.
+Design domain: the 1/8 design box minus the patient/bed keep-out envelope and minus the access corridor (the envelope's x–z footprint extruded along y through the whole box, `corridor=1`). Anywhere in it an element can be air, iron or ferrite; every ferrite element has its own magnetization direction (a unit vector). Free-floating pieces are allowed; no manufacturability constraint yet.
 
 A voxel of the imaging grid (3 mm, filling the envelope) is **green** when at its centre
 
@@ -69,7 +69,7 @@ A voxel of the imaging grid (3 mm, filling the envelope) is **green** when at it
 
 dB_band = min(ism_fraction × 0.70 mT, 2 δ dx_img G_max) comes from hardware (ISM band share, maximum readout gradient); the run log states which limit binds. N_green = size of the largest connected green component.
 
-Start designs: `init=hframe:thin|medium|thick` (iron back plate + post, ferrite slab of 30 / 50 / 80 mm) or `init=noise:<seed>` (blurred noise, 20 % iron and 10 % ferrite).
+Start designs: `init=hframe:thin|medium|thick` (iron back plate + post, ferrite slab of 30 / 50 / 80 mm magnetized +z) or `init=noise:<seed>` (blurred noise, 20 % iron and 10 % ferrite; each ferrite blob gets one random direction, which the elements then change independently).
 
 Each accepted step moves (adds + removes) at most 5 % of a reference mass per material: `mass_step_frac_fe` × `iron_ref_kg` (15 kg) and `mass_step_frac_f` × `ferrite_ref_kg` (10 kg); the caps are Config fields (1 % in the original brief, raised 2026-10-05 because the field then gained only ~1 mT per iteration). Dense noise seeds (~900 kg iron, ~270 kg ferrite) shed mass slowly even so: on the order of a hundred iterations or more before they get near the band (~700 at 1 %).
 
@@ -78,12 +78,12 @@ Each accepted step moves (adds + removes) at most 5 % of a reference mass per ma
 Where an NGSolve default clashes with the brief, the default wins. Deviations flagged in `PLAN.md` (8 and 10.5).
 
 - **Geometry/mesh**: Netgen OCC. 1/8 symmetry. Envelope box and the projection sphere at its centre are their own regions.
-- **Physics**: magnetostatics, vector potential A in `HCurl(order=2, nograds=True)`, nonlinear iron (Brauer) via damped Newton, CG + BDDC (tutorial 2.4). Ferrite: linear, μr 1.05, magnetization source cr_f · p · (Br_f/μ0)/μr_f · e_z.
-- **Design representation**: two level sets on a fixed mesh (ψ iron, ψ_f ferrite, ferrite wins overlaps), exact tet cut ratios, geometric mix of the reluctivities in cut elements; polarity per element.
+- **Physics**: magnetostatics, vector potential A in `HCurl(order=2, nograds=True)`, nonlinear iron (Brauer) via damped Newton, CG + BDDC (tutorial 2.4). Ferrite: linear, μr 1.05, magnetization source cr_f · (Br_f/μ0)/μr_f · m, m the element's unit direction.
+- **Design representation**: two level sets on a fixed mesh (ψ iron, ψ_f ferrite, ferrite wins overlaps), exact tet cut ratios, geometric mix of the reluctivities in cut elements; magnetization direction per element.
 - **Objective**: J = ln(cost / N_smooth) + demagnetisation penalty. N_smooth = sum over voxels of two sigmoids (band, slope) of the even-harmonic polynomial projection of \|B\| (degree ≤ 8, 15 modes) in the projection sphere; sigmoid widths annealed 1 → 0.05 of the band over 100 iterations, never narrower than the present field error.
 - **Update**: fixed-point ψ ← (1−κ)ψ + κ g + ν d for both level sets (tutorial 7.6 pattern), g = scaled sensitivity of J, κ by line search; d = sensitivity of the mean field of the green blob, ν a Gauss–Newton correction that holds that mean at B_c.
 - **Sensitivity**: adjoint, exact discrete gradient w.r.t. the per-element iron and ferrite fractions (material + source term); one adjoint solve per mode, one Jacobian.
-- **Polarity**: an element without ferrite gets the polarity that lowers J (sign of ∫ e_z · curl λ); existing ferrite keeps its polarity.
+- **Direction**: dJ/dm_e = cr_f M_f ∫_e curl λ, so the best direction is −∫_e curl λ normalised. An element without ferrite takes it outright; existing ferrite turns towards it by at most `dir_rot_max` (0.2 rad) per step, inside the line search.
 - **Demagnetisation gate**: fraction of ferrite with H·m < −0.8 Hcj(T_cold) reported as `demag_frac`, quadratic penalty when violated.
 - **Stopping**: `iter_max`, time budget, 3 consecutive failed line searches, or relative change of F < 1e-4 over 5 iterations once the annealing is done.
 

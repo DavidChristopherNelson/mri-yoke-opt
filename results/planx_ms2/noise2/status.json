@@ -1,0 +1,20 @@
+{
+ "state": "finished: converged",
+ "it": 121,
+ "iter_max": 150,
+ "started": "Tue 00:20",
+ "elapsed_h": 3.157475047773785,
+ "s_per_it": 47.76293921470642,
+ "expected_its": null,
+ "eta_expected": null,
+ "eta_latest": "Tue 03:50",
+ "deadline": "Tue 03:50",
+ "mean_mT": 159.2253203270061,
+ "N_green": 368,
+ "F": 13.412112015672347,
+ "iron_kg": 559.7821888726603,
+ "ferrite_kg": 605.3642813407012,
+ "solves": 683,
+ "tries": 303,
+ "updated": "2026-10-06 03:30:12"
+}

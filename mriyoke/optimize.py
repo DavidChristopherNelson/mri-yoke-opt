@@ -7,7 +7,7 @@ from ngsolve import CoefficientFunction
 from .config import Config
 from .geometry import build_mesh
 from .physics import Magnetostatics
-from .levelset import Design, initial_psi_cf, noise_nodal
+from .levelset import Design, initial_psi_cf, noise_seed
 from .sensitivity import Sensitivity
 from .imaging import Imaging
 from .metrics import masses_full, costs_full
@@ -36,7 +36,7 @@ class Optimizer:
         self.A_backup = self.ms.gfA.vec.CreateVector()
         self.A_best = self.ms.gfA.vec.CreateVector()
         self.A_try = self.ms.gfA.vec.CreateVector()
-        self.lm, self.step_max = cfg.gn_lm, cfg.gn_step_max
+        self.lm, self.step_max, self.rot = cfg.gn_lm, cfg.gn_step_max, cfg.dir_rot_max
         self.n_solves = self.n_tries = 0
         self.blob = np.zeros(self.img.shape, bool)
         self.blob_c = self.img.blob_coefs(self.blob)
@@ -99,24 +99,39 @@ class Optimizer:
             self.log(f"    warning: polynomial projection is off by up to {m['residual']*1e3:.3f} mT inside the green blob "
                      f"(> dB_band/4 = {cfg.dB_band*250:.3f} mT): mesh too coarse for the band; see resid= below")
 
-    def gradients(self, m, all_polarities=False):
+    def gradients(self, m):
         """Sensitivities of J and of the blob mean field w.r.t. (iron, ferrite) fractions:
         d ln N_s / d cr = sum_k (d ln N_s / d a_k) (d a_k / d cr), one adjoint solve per mode.
-        Also sets the polarity of every element that holds no ferrite yet to the sign that lowers J, so ferrite
-        nucleates with the best polarity (existing ferrite keeps its polarity: flipping it is a jump the line
-        search could not control). all_polarities=True sets every element (used once for noise seeds)."""
+        Also updates the magnetization directions: dJ/dm_e = cr_f M_f S_e, so the best direction is -S_e/|S_e|.
+        Elements without ferrite take it outright (ferrite nucleates with its best direction); elements with
+        ferrite turn towards it by at most self.rot (<= dir_rot_max) per step, a change of the design that the
+        line search evaluates together with the level-set step and reverts if the step fails."""
         cfg, ms, sens = self.cfg, self.ms, self.sens
         Gm = sens.mode_grads()
         _, dlogN = self.img.log_count(m["a"], self.w_b, self.w_s)
-        gJ = np.tensordot(-dlogN, Gm, axes=1)                  # (3, ne) pieces of d(-ln N_s)
-        S = gJ[2]
+        gJ = np.tensordot(-dlogN, Gm, axes=1)                  # (5, ne) pieces of d(-ln N_s)
+        S = gJ[2:].T.copy()                                    # (ne, 3)
         gd = None
         if m["demag_P"] > 0:
             gd, d_explicit = sens.demag_grad()
-            S = S + cfg.demag_weight * gd[2]
-        pol, crf = ms.pol.vec.FV().NumPy(), ms.crf.vec.FV().NumPy()
-        free = ((crf < 1e-9) | all_polarities) & (S != 0)
-        pol[free] = -np.sign(S[free])
+            S += cfg.demag_weight * gd[2:].T
+        mdir, crf = ms.get_m(), ms.crf.vec.FV().NumPy()
+        self.m_backup = mdir.copy()
+        nS = np.linalg.norm(S, axis=1)
+        ok = nS > 0
+        best = np.where(ok[:, None], -S / np.where(ok, nS, 1.0)[:, None], mdir)
+        free = (crf < 1e-9) & ok
+        mdir[free] = best[free]
+        turn = ~free & ok & (crf > 0)
+        cosang = np.clip(np.sum(mdir[turn] * best[turn], axis=1), -1.0, 1.0)
+        ang = np.arccos(cosang)
+        f = np.minimum(1.0, self.rot / np.maximum(ang, 1e-12))[:, None]     # slerp fraction
+        sa = np.sin(ang)[:, None]
+        rot = np.where(sa > 1e-9, (np.sin((1 - f) * ang[:, None]) * mdir[turn] + np.sin(f * ang[:, None]) * best[turn]) / np.where(sa > 1e-9, sa, 1.0),
+                       mdir[turn])
+        mdir[turn] = rot / np.linalg.norm(rot, axis=1, keepdims=True)
+        self.turned = float(np.degrees(np.mean(ang))) if ang.size else 0.0
+        ms.set_m(mdir)
         c_fe, c_f = sens.cost_grad()
         g_fe = gJ[0] + c_fe / m["cost"]
         g_f = sens.ferrite(gJ) + c_f / m["cost"]
@@ -182,13 +197,13 @@ class Optimizer:
                    blob_mean=m["blob_mean"], cost=m["cost"], cost_fe=m["cost_fe"], cost_f=m["cost_f"], iron_kg=m["iron_kg"],
                    ferrite_kg=m["ferrite_kg"], demag_frac=m["demag_frac"], residual=m["residual"], J=J, kappa=kappa,
                    width=self.w_b / cfg.dB_band, moved_fe_kg=m.get("moved_fe_kg", 0.0), moved_f_kg=m.get("moved_f_kg", 0.0),
-                   dt=dt, elapsed_s=self.clock.elapsed(), solves=self.n_solves, tries=self.n_tries)
+                   turn_deg=getattr(self, "turned", 0.0), dt=dt, elapsed_s=self.clock.elapsed(), solves=self.n_solves, tries=self.n_tries)
         if it > 0:
             self.clock.dts.append(dt)
         self.hist.append(row)
         self.log(f"[it {it:3d}] F={m['F']:.4g} $/voxel  N_green={m['N_green']}  N_smooth={N_s:.3g}  blobB={m['blob_mean']*1e3:8.3f} mT  "
                  f"iron={m['iron_kg']:7.1f} kg  ferrite={m['ferrite_kg']:7.1f} kg  moved={row['moved_fe_kg']:.2f}/{row['moved_f_kg']:.2f} kg  "
-                 f"demag={m['demag_frac']:.2f}  resid={m['residual']*1e3:.3f} mT  J={J:.4f}  kappa={kappa:.3f}  ({dt:.0f}s)")
+                 f"demag={m['demag_frac']:.2f}  resid={m['residual']*1e3:.3f} mT  turn={getattr(self, 'turned', 0.0):.1f}deg  J={J:.4f}  kappa={kappa:.3f}  ({dt:.0f}s)")
         tag = f"iter_{it:04d}"
         label = (f"iter {it}   F {m['F']:.4g} $/voxel   N_green {m['N_green']}   mean B {m['blob_mean']*1e3:.2f} mT   "
                  f"iron {m['iron_kg']:.1f} kg   ferrite {m['ferrite_kg']:.1f} kg   ${m['cost']:.0f}   demag {m['demag_frac']:.2f}")
@@ -207,21 +222,24 @@ class Optimizer:
         self.clock.write_status(self.clock.status(it, m, "running", self.n_solves, self.n_tries))
 
     def save(self, tag):
-        """Checkpoint: nodal iron and ferrite level sets and the element polarities."""
+        """Checkpoint: nodal iron and ferrite level sets and the element magnetization directions."""
         d = self.cfg.results_dir
         np.save(os.path.join(d, f"psi_{tag}.npy"), self.des.fe.psi.vec.FV().NumPy())
         np.save(os.path.join(d, f"psif_{tag}.npy"), self.des.f.psi.vec.FV().NumPy())
-        np.save(os.path.join(d, f"pol_{tag}.npy"), self.ms.pol.vec.FV().NumPy())
+        np.save(os.path.join(d, f"mdir_{tag}.npy"), self.ms.get_m())
 
     def initial_design(self):
         cfg, des, ms = self.cfg, self.des, self.ms
         kind, _, arg = cfg.init.partition(":")
         if kind == "noise":
             coords = np.array([v.point for v in self.mesh.vertices])
-            for ls, nodal in zip((des.fe, des.f), noise_nodal(cfg, int(arg or 0), coords)):
+            cent = coords[des.fe.ev].mean(axis=1)
+            n_fe, n_f, mdir, nb = noise_seed(cfg, int(arg or 0), coords, cent)
+            for ls, nodal in zip((des.fe, des.f), (n_fe, n_f)):
                 ls.psi.vec.FV().NumPy()[:] = nodal; ls.normalize_psi()
+            ms.set_m(mdir)
             self.log(f"noise seed {int(arg or 0)}: pitch {cfg.h_seed} m, correlation length {cfg.ell_seed} m, "
-                     f"{cfg.seed_iron_frac:.0%} iron, {cfg.seed_ferrite_frac:.0%} ferrite")
+                     f"{cfg.seed_iron_frac:.0%} iron, {cfg.seed_ferrite_frac:.0%} ferrite in {nb} blobs, one random direction each")
         elif kind == "hframe":
             if arg:
                 cfg.slab_t = {"thin": 0.030, "medium": 0.050, "thick": 0.080}[arg]
@@ -233,7 +251,7 @@ class Optimizer:
             d, name = os.path.split(cfg.resume)
             des.fe.psi.vec.FV().NumPy()[:] = np.load(cfg.resume); des.fe.normalize_psi()
             des.f.psi.vec.FV().NumPy()[:] = np.load(os.path.join(d, name.replace("psi_", "psif_", 1))); des.f.normalize_psi()
-            ms.pol.vec.FV().NumPy()[:] = np.load(os.path.join(d, name.replace("psi_", "pol_", 1)))
+            ms.set_m(np.load(os.path.join(d, name.replace("psi_", "mdir_", 1))))
         des.apply(des.cr_current())
 
     def run(self):
@@ -245,13 +263,6 @@ class Optimizer:
         t = time.time()
         m = self.evaluate()
         self.count(m)
-        if cfg.init.startswith("noise") and not cfg.resume:    # polarity of every element from one forward + adjoint solve
-            self.set_widths(0, m)
-            self.gradients(m, all_polarities=True)
-            pol = ms.pol.vec.FV().NumPy()
-            self.log(f"polarities set from the adjoint: {np.mean(pol[ms.design_mask] > 0):.0%} of the design elements +z")
-            m = self.evaluate()
-            self.count(m)
         kappa = cfg.kappa0
         self.set_widths(0, m)
         J = self.objective(m)
@@ -297,9 +308,10 @@ class Optimizer:
                 if kappa < cfg.kappa_min * k_cap:              # relative to the capped step
                     break
             if best is None:
-                des.apply(cr_cur); ms.gfA.vec.data = self.A_backup
+                des.apply(cr_cur); ms.gfA.vec.data = self.A_backup; ms.set_m(self.m_backup)
                 fails += 1
                 self.lm = min(self.lm * 10, 1e3); self.step_max = max(0.5 * min(self.step_max, self.last_radius), 1e-6)
+                self.rot *= 0.5
                 if fails >= cfg.ls_max_fails:
                     self.log(f"[it {it}] no descent step found (kappa={kappa:.2e}); stopping")
                     stop = "no descent step"; break
@@ -307,7 +319,7 @@ class Optimizer:
                 kappa = k_cap
                 continue
             fails = 0
-            self.lm = max(self.lm / 3, cfg.gn_lm * 1e-3)
+            self.lm = max(self.lm / 3, cfg.gn_lm * 1e-3); self.rot = min(1.5 * self.rot, cfg.dir_rot_max)
             J_new, m_new, nu, kappa, radius = best
             self.step_max = min(1.5 * radius, cfg.gn_step_max)
             des.set_trial(kappa, nu); ms.gfA.vec.data = self.A_best
