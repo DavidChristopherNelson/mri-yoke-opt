@@ -1,0 +1,16 @@
+# Runs the submitted job (~/job.env) on every boot, so a spot VM that was evicted and restarted continues by itself.
+[Unit]
+Description=mri-yoke-opt job
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+WorkingDirectory=/home/azureuser/mri-yoke-opt
+ExecStart=/home/azureuser/mri-yoke-opt/cloud/azure/job.sh
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

@@ -82,6 +82,7 @@ class Config:
     time_budget_h: float = 0.0        # stop cleanly (checkpoint saved) before this much wall time is used; 0 = no limit
     threads: int = 0                  # NGSolve TaskManager threads; 0 = all (set when several runs share a machine)
     run_history: str = "results/run_history.csv"   # one row per finished run: size, machine, timing; feeds the ETA
+    it_offset: int = 0                # iteration number of the resume checkpoint (continues numbering, annealing, history)
     resume: str = ""                  # path to psi_latest.npy / psi_final.npy of an earlier run on the same mesh
     init: str = "hframe"              # initial design: "hframe[:thin|medium|thick]" (iron plate + post + pole, ferrite slab of
                                       #   30 / 50 / 80 mm; plain "hframe" uses slab_t), "noise:<seed>" (blurred-noise iron and

@@ -1,0 +1,6 @@
+# versions of the laptop runs (2026-10); NGSolve wheels exist for Linux x86-64 and macOS
+ngsolve==6.2.2607
+numpy==2.5.3
+scipy==1.18.1
+scikit-image==0.26.0
+matplotlib==3.11.2

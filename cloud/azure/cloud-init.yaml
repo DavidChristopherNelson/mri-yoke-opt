@@ -1,0 +1,27 @@
+#cloud-config
+# First-boot setup of the Azure VM (passed as --custom-data by azure.sh create).
+package_update: true
+packages:
+  - git
+  - python3-venv
+  - python3-dev
+  - rsync
+  - tmux
+  - jq
+  - curl
+  # X/GL libraries the netgen wheel links against (it is built with its GUI); harmless if unused
+  - libgl1
+  - libglu1-mesa
+  - libxrender1
+  - libxcursor1
+  - libxft2
+  - libxinerama1
+  - libxi6
+runcmd:
+  - sudo -u azureuser git clone https://github.com/DavidChristopherNelson/mri-yoke-opt.git /home/azureuser/mri-yoke-opt
+  - sudo -u azureuser python3 -m venv /home/azureuser/mri-yoke-opt/.venv
+  - sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q --upgrade pip
+  - sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q -r /home/azureuser/mri-yoke-opt/requirements.txt || sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q ngsolve numpy scipy scikit-image matplotlib
+  - cp /home/azureuser/mri-yoke-opt/cloud/azure/mriyoke-job.service /etc/systemd/system/mriyoke-job.service
+  - systemctl daemon-reload
+  - systemctl enable mriyoke-job.service

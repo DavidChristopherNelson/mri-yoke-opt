@@ -1,6 +1,6 @@
 """Level-set topology optimization loop (NGSolve tutorial 7.6 pattern) for Plan X:
 minimise F = (C_fe + C_f + C_fixed) / N_green, the cost per good imaging voxel."""
-import csv, json, os, time
+import csv, gzip, json, os, time
 import numpy as np
 import ngsolve
 from ngsolve import CoefficientFunction
@@ -232,7 +232,10 @@ class Optimizer:
         self.fields = export.sample_design(self.mesh, self.ms, des, cfg)
         meshes = export.frame_from_fields(self.fields, cfg)
         meshes["gr"] = export.green_surface(self.blob, cfg)
-        self.frames.append(dict(it=it, label=label, meshes=meshes))
+        frame = dict(it=it, label=label, meshes=meshes)
+        self.frames.append(frame)
+        with gzip.open(os.path.join(cfg.results_dir, "frames.jsonl.gz"), "at") as f:   # viewer frames, for resume
+            f.write(json.dumps(frame) + "\n")
         export.write_viewer(self.frames, cfg, os.path.join(cfg.results_dir, "viewer.html"))
         export.write_history_png(self.hist, cfg, os.path.join(cfg.results_dir, "history.png"))
         with open(os.path.join(cfg.results_dir, "history.csv"), "w", newline="") as f:
@@ -240,12 +243,53 @@ class Optimizer:
         self.log(self.clock.eta_line(it))
         self.clock.write_status(self.clock.status(it, m, "running", self.n_solves, self.n_tries))
 
-    def save(self, tag):
-        """Checkpoint: nodal iron and ferrite level sets and the element magnetization directions."""
+    def save(self, tag, it=None):
+        """Checkpoint: nodal iron and ferrite level sets and the element magnetization directions (each written to a
+        temporary file and renamed), then <tag>.json with the iteration number."""
         d = self.cfg.results_dir
-        np.save(os.path.join(d, f"psi_{tag}.npy"), self.des.fe.psi.vec.FV().NumPy())
-        np.save(os.path.join(d, f"psif_{tag}.npy"), self.des.f.psi.vec.FV().NumPy())
-        np.save(os.path.join(d, f"mdir_{tag}.npy"), self.ms.get_m())
+        for name, arr in ((f"psi_{tag}", self.des.fe.psi.vec.FV().NumPy()), (f"psif_{tag}", self.des.f.psi.vec.FV().NumPy()),
+                          (f"mdir_{tag}", self.ms.get_m())):
+            np.save(os.path.join(d, name + ".tmp.npy"), arr)
+            os.replace(os.path.join(d, name + ".tmp.npy"), os.path.join(d, name + ".npy"))
+        if it is not None:
+            with open(os.path.join(d, f"{tag}.json.tmp"), "w") as f:
+                json.dump(dict(it=it), f)
+            os.replace(os.path.join(d, f"{tag}.json.tmp"), os.path.join(d, f"{tag}.json"))
+
+    def load_previous(self, it0):
+        """Resume in the same directory: history rows and viewer frames of iterations < it0."""
+        d = self.cfg.results_dir
+
+        def val(x):
+            for t in (int, float):
+                try:
+                    return t(x)
+                except (TypeError, ValueError):
+                    pass
+            return x
+        try:
+            with open(os.path.join(d, "history.csv")) as f:
+                self.hist = [{k: val(v) for k, v in r.items()} for r in csv.DictReader(f) if float(r["it"]) < it0]
+            for r in self.hist:
+                r["it"] = int(r["it"])
+        except OSError:
+            self.hist = []
+        frames = {}
+        try:
+            with gzip.open(os.path.join(d, "frames.jsonl.gz"), "rt") as f:
+                for line in f:
+                    try:
+                        fr = json.loads(line)
+                    except ValueError:                         # line cut short by an eviction
+                        continue
+                    frames[fr["it"]] = fr                      # a re-recorded iteration replaces the old one
+        except (OSError, EOFError):
+            pass
+        self.frames = [frames[k] for k in sorted(frames) if k < it0]
+        with gzip.open(os.path.join(d, "frames.jsonl.gz"), "wt") as f:    # rewrite clean (an eviction may cut the tail)
+            for fr in self.frames:
+                f.write(json.dumps(fr) + "\n")
+        self.clock.dts = [r["dt"] for r in self.hist if r["it"] > 0 and isinstance(r.get("dt"), (int, float))]
 
     def initial_design(self):
         cfg, des, ms = self.cfg, self.des, self.ms
@@ -283,12 +327,16 @@ class Optimizer:
         m = self.evaluate()
         self.count(m)
         kappa = cfg.kappa0
-        self.set_widths(0, m)
+        it0 = cfg.it_offset
+        if it0 > 0:
+            self.load_previous(it0)
+            self.log(f"resumed at iteration {it0} from {cfg.resume} ({len(self.hist)} earlier history rows, {len(self.frames)} frames)")
+        self.set_widths(it0, m)
         J = self.objective(m)
-        self.record(0, m, kappa, J, time.time() - t)
+        self.record(it0, m, kappa, J, time.time() - t)
         stall = fails = 0
-        stop, last_it = "iter_max", 0
-        for it in range(1, cfg.iter_max + 1):
+        stop, last_it = "iter_max", it0
+        for it in range(it0 + 1, cfg.iter_max + 1):
             if self.clock.out_of_time():
                 self.log(f"[it {it}] time budget of {cfg.time_budget_h} h reached; stopping (resume from psi_latest.npy)")
                 stop = "time budget"; break
@@ -351,11 +399,11 @@ class Optimizer:
             m, J = m_new, J_new
             self.count(m)
             self.record(it, m, kappa, J, time.time() - t); last_it = it
-            self.save("latest")
+            self.save("latest", it)
             if stall >= cfg.dJ_rel_count:
                 self.log(f"[it {it}] relative change < {cfg.dJ_rel_tol} for {stall} steps; stopping")
                 stop = "converged"; break
-        self.save("final")
+        self.save("final", last_it)
         np.save(os.path.join(cfg.results_dir, "mask_final.npy"), export.material_mask(self.fields))   # for multistart IoU
         with open(os.path.join(cfg.results_dir, "config.json"), "w") as f:
             json.dump(self.cfg.__dict__, f, indent=1)

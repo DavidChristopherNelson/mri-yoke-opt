@@ -12,12 +12,16 @@ Status: pipeline runs end to end on the coarse laptop mesh; gradients verified a
 ## Run
 
 ```
-python3 -m venv .venv && .venv/bin/pip install ngsolve numpy scipy scikit-image matplotlib
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 caffeinate -s -i .venv/bin/python scripts/run_coarse.py iter_max=150 results_dir=results/x   # any Config field overridable as key=value
 caffeinate -s -i .venv/bin/python scripts/run_coarse.py init=noise:3 results_dir=results/n3  # noise seed 3
 caffeinate -s -i .venv/bin/python scripts/run_fine.py                                        # finer mesh, results/fine
 # caffeinate: macOS otherwise sleeps mid-run. verbose_newton=1 logs every Newton iteration.
 ```
+
+Cloud (Azure spot VM, Standard_F16als_v7 in eastus2): see `cloud/azure/README.md`.
+
+Resume: `auto_resume=1` continues an interrupted run in the same `results_dir` (iteration numbering, history and viewer kept); finished runs are skipped.
 
 Multi-start (3 H-frame seeds + N noise seeds, then a summary):
 
