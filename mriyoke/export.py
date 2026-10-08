@@ -198,11 +198,15 @@ show(0); loop(0);
 """
 
 
-def write_viewer(frames, cfg: Config, path):
+def viewer_html(frames, cfg: Config):
     """frames: list of dict(it, label, meshes={fe, ff[, gr]: surface(...), ar: arrows(...)})."""
     data = dict(D=cfg.design_L, env=[cfg.env_x, cfg.env_y, cfg.env_z], corridor=cfg.corridor, frames=frames)
+    return VIEWER_HTML.replace("__DATA__", json.dumps(data))
+
+
+def write_viewer(frames, cfg: Config, path):
     with open(path, "w") as f:
-        f.write(VIEWER_HTML.replace("__DATA__", json.dumps(data)))
+        f.write(viewer_html(frames, cfg))
 
 
 def write_slice_png(mesh, ms, des, cfg: Config, path, title=""):

@@ -19,7 +19,7 @@ caffeinate -s -i .venv/bin/python scripts/run_fine.py                           
 # caffeinate: macOS otherwise sleeps mid-run. verbose_newton=1 logs every Newton iteration.
 ```
 
-Cloud (Azure spot VM, Standard_F16als_v7 in eastus2, every iteration persisted to Azure Blob Storage): see `cloud/azure/README.md`, including account setup from scratch.
+Cloud (Azure spot VM, Standard_F16als_v7 in eastus2, every iteration persisted to Azure Blob Storage): see `cloud/azure/README.md`, including account setup from scratch. Runs there are created, followed, paused and cancelled in the cloud dashboard (`cloud/azure/azure.sh dashboard`, http://localhost:8770/).
 
 Resume: `auto_resume=1` continues an interrupted run in the same `results_dir` (iteration numbering, history and viewer kept); finished runs are skipped.
 

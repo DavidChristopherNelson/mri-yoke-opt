@@ -22,6 +22,6 @@ runcmd:
   - sudo -u azureuser python3 -m venv /home/azureuser/mri-yoke-opt/.venv
   - sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q --upgrade pip
   - sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q -r /home/azureuser/mri-yoke-opt/requirements.txt || sudo -u azureuser /home/azureuser/mri-yoke-opt/.venv/bin/pip install -q ngsolve numpy scipy scikit-image matplotlib
-  - cp /home/azureuser/mri-yoke-opt/cloud/azure/mriyoke-job.service /etc/systemd/system/mriyoke-job.service
+  - cp /home/azureuser/mri-yoke-opt/cloud/azure/mriyoke-agent.service /etc/systemd/system/mriyoke-agent.service
   - systemctl daemon-reload
-  - systemctl enable mriyoke-job.service
+  - systemctl enable mriyoke-agent.service

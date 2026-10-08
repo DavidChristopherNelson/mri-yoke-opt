@@ -1,0 +1,20 @@
+# VM agent: runs the runs requested from the cloud dashboard (cloud/agent.py). Starts on every boot, so after a spot
+# eviction and restart the runs continue from their last checkpoint in blob storage.
+[Unit]
+Description=mri-yoke-opt agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+WorkingDirectory=/home/azureuser/mri-yoke-opt
+EnvironmentFile=-/home/azureuser/agent.env
+ExecStartPre=-/usr/bin/git -C /home/azureuser/mri-yoke-opt pull -q --ff-only
+ExecStartPre=-/home/azureuser/mri-yoke-opt/.venv/bin/pip install -q -r /home/azureuser/mri-yoke-opt/requirements.txt
+ExecStart=/home/azureuser/mri-yoke-opt/.venv/bin/python -u cloud/agent.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

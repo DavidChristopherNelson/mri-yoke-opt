@@ -4,12 +4,11 @@
 #
 #   cloud/azure/azure.sh check                    account, VM size availability, spot vCPU quota
 #   cloud/azure/azure.sh create                   storage account + container, spot VM, roles; wait for setup, smoke test
-#   cloud/azure/azure.sh submit <args...>         start a job, e.g. scripts/multistart.py az1 --n 8 --batch 4 --hours 1000 iter_max=150
-#   cloud/azure/azure.sh status                   power state, job state, tail of the job log, session table
-#   cloud/azure/azure.sh watch <session>          loop: restart the VM after an eviction, pull results when done
-#   cloud/azure/azure.sh pull <session>           download results/<session> from blob storage (azcopy sync), rebuild viewers
-#   cloud/azure/azure.sh pull-all                 download every session in blob storage
-#   cloud/azure/azure.sh dashboard                run the dashboard on the VM, tunnelled to http://localhost:8766/dashboard/
+#   cloud/azure/azure.sh dashboard                the cloud dashboard: runs, new runs, pause/resume/cancel, VM on/off
+#                                                 (http://localhost:8770/, reads straight from blob storage)
+#   cloud/azure/azure.sh status                   power state, agent heartbeat, tail of the agent log
+#   cloud/azure/azure.sh pull <session>           optional: download results/<session> to this machine (azcopy sync)
+#   cloud/azure/azure.sh pull-all                 optional: download every session
 #   cloud/azure/azure.sh ssh [cmd]                shell on the VM
 #   cloud/azure/azure.sh start | stop | delete    start / deallocate (stops compute billing) / delete the VM (results in
 #                                                 blob storage are kept; delete-data removes them too)
@@ -83,45 +82,26 @@ case "$cmd" in
     sshvm 'cd mri-yoke-opt && .venv/bin/python -c "import ngsolve, scipy, skimage, matplotlib, azure.storage.blob, os; print(\"ngsolve\", ngsolve.__version__, \"cores\", os.cpu_count())" && .venv/bin/python scripts/test_forward.py | tail -3'
     echo "blob storage test (role assignments can take a few minutes to apply; rerun 'azure.sh blobtest' if this fails):"
     "$0" blobtest || true
-    echo "VM ready: $(ip)   results go to $(burl)"
+    printf 'MRIYOKE_BLOB_URL=%s\n' "$(burl)" | sshvm 'cat > ~/agent.env && sudo systemctl restart mriyoke-agent && sleep 8 && systemctl is-active mriyoke-agent'
+    echo "VM ready: $(ip). The agent runs; results go to $(burl)"
+    echo "next: cloud/azure/azure.sh dashboard"
     ;;
   blobtest)
     sshvm "cd mri-yoke-opt && date > /tmp/hello.txt && MRIYOKE_BLOB_URL=$(burl) .venv/bin/python -m mriyoke.persist put /tmp/hello.txt _test/hello-from-vm.txt && echo 'VM -> blob: ok'"
     az storage blob show --account-name "$(sa)" -c "$CONTAINER" -n _test/hello-from-vm.txt --auth-mode login -o none 2>/dev/null \
       && echo "blob -> laptop: ok" || echo "blob -> laptop: failed (wait a few minutes for the role assignment, then retry)"
     ;;
-  submit)
-    [ $# -gt 0 ] || { echo "usage: azure.sh submit scripts/multistart.py <session> [options] [key=value ...]"; exit 1; }
-    f=$(mktemp); printf 'JOB=%q\nMRIYOKE_BLOB_URL=%q\n' "$*" "$(burl)" > "$f"
-    scp -q -o StrictHostKeyChecking=accept-new "$f" "$U@$(ip):job.env"; rm -f "$f"
-    az vm update -g "$RG" -n "$VM" --set tags.mriyoke=running -o none
-    sshvm 'rm -f ~/job.done ~/job.failcount; cd mri-yoke-opt && git pull -q --ff-only && sudo systemctl restart mriyoke-job && sleep 5 && systemctl is-active mriyoke-job && tail -n 3 ~/job.log'
-    ;;
   status)
-    echo "power: $(power)   tag: $(tag)"
-    if [ "$(power)" = "VM running" ]; then
-      sshvm 'echo "service: $(systemctl is-active mriyoke-job)"; [ -f ~/job.done ] && echo "done at $(cat ~/job.done)"; echo "--- job.log"; tail -n 8 ~/job.log | tr -d "\033" | sed "s/\[2J\[H//"; s=$(ls -td mri-yoke-opt/results/*/status.txt 2>/dev/null | head -1); [ -n "$s" ] && { echo "--- $s"; cat "$s"; }'
-    fi
-    ;;
-  watch)
-    session=${1:?usage: azure.sh watch <session>}
-    while true; do
-      p=$(power); t=$(tag); echo "$(date +%H:%M) $p, job $t"
-      if [ "$t" = done ] || [ "$t" = failed ]; then
-        echo "job $t: downloading results"; pull "$session"; echo "results in results/$session"; exit 0
-      fi
-      if [ "$p" = "VM deallocated" ] || [ "$p" = "VM stopped" ]; then
-        echo "VM is off but the job is not finished (spot eviction): starting it again"
-        az vm start -g "$RG" -n "$VM" -o none || echo "start failed (no spot capacity?); retrying in 10 min"
-      fi
-      sleep 600
-    done
+    echo "power: $(power)"
+    az storage blob download --account-name "$(sa)" -c "$CONTAINER" -n _control/agent.json -f /dev/stdout --auth-mode login -o none 2>/dev/null \
+      | python3 -c "import json,sys; a=json.load(sys.stdin); print(f\"agent {a['host']} at {a['time']}: {len(a['running'])} running, {a['waiting']} waiting, {a['used']}/{a['cores']} cores, idle {a['idle_min']} min\")" \
+      || echo "agent: no heartbeat yet"
+    [ "$(power)" = "VM running" ] && sshvm 'echo "--- agent log"; journalctl -u mriyoke-agent -n 15 --no-pager -o cat' || true
     ;;
   pull)      pull "${1:?usage: azure.sh pull <session>}" ;;
   pull-all)  for sdir in $(az storage blob list --account-name "$(sa)" -c "$CONTAINER" --auth-mode login --delimiter / --query "[].name" -o tsv); do
-               sdir=${sdir%/}; [ "$sdir" = _test ] || [ "$sdir" = _jobs ] || pull "$sdir"; done ;;
-  dashboard) echo "open http://localhost:8766/dashboard/  (Ctrl-C to stop)"
-             ssh -o StrictHostKeyChecking=accept-new -L 8766:localhost:8766 "$U@$(ip)" 'cd mri-yoke-opt && .venv/bin/python scripts/dashboard.py --serve 8766' ;;
+               sdir=${sdir%/}; case "$sdir" in _*) ;; *) pull "$sdir" ;; esac; done ;;
+  dashboard) MRIYOKE_BLOB_URL="$(burl)" RG="$RG" VM="$VM" "$ROOT/.venv/bin/python" "$ROOT/scripts/cloud_dashboard.py" "$@" ;;
   ssh)       sshvm "$@" ;;
   start)     az vm start -g "$RG" -n "$VM" -o none; echo "running: $(ip)" ;;
   stop)      az vm deallocate -g "$RG" -n "$VM" -o none; echo "deallocated (disk kept, compute billing stopped)" ;;
@@ -129,5 +109,5 @@ case "$cmd" in
              [ "$a" = y ] && az group delete -n "$RG" --yes --no-wait && echo "deleting $RG" ;;
   delete-data) read -r -p "delete resource group $DATA_RG with storage account $(sa) and ALL results in it? type yes: " a
              [ "$a" = yes ] && az group delete -n "$DATA_RG" --yes --no-wait && echo "deleting $DATA_RG" ;;
-  *)         sed -n '2,16p' "$0" ;;
+  *)         sed -n '2,15p' "$0" ;;
 esac
