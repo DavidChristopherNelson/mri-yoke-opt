@@ -58,10 +58,11 @@ def material_mask(fields):
 def mirror8(v, comp=None):
     """Mirror a 1/8-model grid (first node on the symmetry planes) to the full magnet. comp: component index of a
     magnetization / B-like vector, whose sign flips under the mirrors as the field's symmetry demands
-    (B normal to z = 0, tangential to x = 0 and y = 0)."""
+    (B normal to z = 0, tangential to x = 0 and y = 0):
+      mirror in z: m_x, m_y flip, m_z kept;   mirror in x: m_x flips;   mirror in y: m_y flips."""
     for axis in range(3):
         half = np.take(v, np.arange(1, v.shape[axis]), axis=axis)
-        if comp is not None and ((axis == 2) != (comp == 2)):
+        if comp is not None and ((axis == 2) != (comp == axis)):
             half = -half
         v = np.concatenate([np.flip(half, axis=axis), v], axis=axis)
     return v
