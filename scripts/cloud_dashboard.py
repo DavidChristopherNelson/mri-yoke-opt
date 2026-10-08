@@ -14,7 +14,7 @@ import subprocess, sys, threading, time, urllib.parse, webbrowser
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from mriyoke.persist import container
-from mriyoke.control import CTRL, NAME, SCRIPTS, Store, age_s, config_fields, now, parse_args, runnable
+from mriyoke.control import CTRL, NAME, SCRIPTS, Store, age_s, config_fields, month, now, over_cap, parse_args, runnable
 from mriyoke.config import Config
 from mriyoke import export
 
@@ -127,8 +127,11 @@ class Cloud:
         alive = agent_age is not None and agent_age < AGENT_ALIVE_S
         rows = [self.row(k, reqs.get(k), states.get(k), statuses.get(k), alive) for k in keys]
         rows.sort(key=lambda r: (r["session"], r["name"]))
+        limits = self.json_blob(f"{CTRL}/limits.json", 5) or {}
+        spend = self.json_blob(f"{CTRL}/spend/{month()}.json", 10) or {}
         out = dict(generated=now(), vm=dict(self.vm), agent=agent, agent_age_s=agent_age, agent_alive=alive, runs=rows,
-                   pending=sum(1 for k in keys if runnable(reqs.get(k), states.get(k))))
+                   pending=sum(1 for k in keys if runnable(reqs.get(k), states.get(k))),
+                   limits=limits, spend=spend, over_cap=over_cap(limits, spend), month=month())
         with self.lock:
             self.overview_cache = (time.time(), out)
         return out
@@ -259,6 +262,18 @@ class Cloud:
         self.overview_cache = (0, None)
         return dict(done=done, refused=refused)
 
+    def set_limits(self, body):
+        cap = body.get("monthly_usd")
+        if cap in (None, ""):
+            cap = None
+        else:
+            cap = float(cap)
+            if cap < 0:
+                raise ValueError("the cap must be positive")
+        self.store.put(f"{CTRL}/limits.json", dict(monthly_usd=cap, updated=now()))
+        self.small.pop(f"{CTRL}/limits.json", None); self.overview_cache = (0, None)
+        return dict(monthly_usd=cap)
+
     # ---------------- VM ----------------
     def az(self, *args, timeout=180):
         r = subprocess.run(["az", *args], capture_output=True, text=True, timeout=timeout)
@@ -301,7 +316,7 @@ class Cloud:
             try:
                 ov = self.overview()
                 last = self.vm.get("auto_started")
-                if (self.auto_start and ov["pending"] and self.vm["power"] in ("VM deallocated", "VM stopped")
+                if (self.auto_start and ov["pending"] and not ov["over_cap"] and self.vm["power"] in ("VM deallocated", "VM stopped")
                         and not self.vm["action"] and (last is None or time.time() - last > 600)):
                     self.vm["auto_started"] = time.time()
                     self.vm_action("start")
@@ -368,6 +383,8 @@ def make_handler(cloud):
                     return self.send(200, cloud.control(body))
                 if self.path == "/api/vm":
                     return self.send(200, cloud.vm_action(body.get("action")))
+                if self.path == "/api/limits":
+                    return self.send(200, cloud.set_limits(body))
                 return self.send(404, {"error": "not found"})
             except ValueError as e:
                 return self.send(400, {"error": str(e)})
@@ -392,6 +409,9 @@ header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:
 header h1{font-size:16px;margin:0;font-weight:650}.grow{flex:1}
 .vm{display:flex;align-items:center;gap:10px;padding:5px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .vm .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3)}.vm .dot.on{background:var(--good)}.vm .dot.busy{background:var(--warn)}
+.spend{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 10px;border-radius:10px;background:var(--bg)}
+.spend .meter{width:70px;height:6px;border-radius:3px;background:var(--chip);overflow:hidden}.spend .meter span{display:block;height:100%;background:var(--accent)}
+.spend.over{color:var(--crit);border-color:var(--crit)}.spend.over .meter span{background:var(--crit)}
 .muted{color:var(--ink2)}.faint{color:var(--ink3)}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 main{max-width:1500px;margin:0 auto;padding:18px 20px 60px}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
@@ -438,6 +458,7 @@ a{color:var(--accent)}details summary{cursor:pointer;color:var(--ink2)}
 </style></head><body>
 <header><h1>MRI magnet runs</h1>
 <div class="vm" id="vm"><span class="dot" id="vmdot"></span><span id="vmtext">VM …</span><button class="small" id="vmbtn" style="display:none"></button></div>
+<button class="spend" id="spend" title="Compute spend this month (counted by the VM agent) and your monthly cap. Click to change the cap."></button>
 <span class="muted" id="agent"></span><span class="grow"></span><span class="faint" id="updated"></span>
 <button class="primary" id="newbtn">+ New runs</button></header>
 <main id="main"></main>
@@ -489,9 +510,14 @@ function renderTop(){const v=OV.vm,dot=$('#vmdot'),btn=$('#vmbtn');
     dot.className='dot'+(on?' on':busy?' busy':'');
     $('#vmtext').textContent=v.action?('VM '+v.action+'…'):(v.power==='unknown'?'VM state unknown':v.power.replace('VM ','VM '));
     $('#vmtext').title=v.error||'';btn.style.display=busy?'none':'';btn.textContent=on?'Stop VM':'Start VM';
-    btn.onclick=async()=>{if(on&&OV.runs.some(r=>r.state==='running')&&!confirm('Runs are in progress. Stop the VM anyway? They continue from their last iteration when it starts again.'))return;
+    btn.onclick=async()=>{if(!on&&OV.over_cap&&!confirm('The monthly spending cap is reached: the VM will switch itself off again right away. Raise the cap first (click the spend meter). Start anyway?'))return;
+      if(on&&OV.runs.some(r=>r.state==='running')&&!confirm('Runs are in progress. Stop the VM anyway? They continue from their last iteration when it starts again.'))return;
       try{await api('/api/vm',{action:on?'stop':'start'});toast(on?'Stopping VM…':'Starting VM…');setTimeout(refresh,1500);}catch(e){toast(e.message);}};}
   const a=OV.agent;$('#agent').textContent=!a?'agent: not seen yet':OV.agent_alive?`agent: ${a.running.length} running, ${a.waiting} waiting, ${a.used}/${a.cores} cores · ${ago(OV.agent_age_s)}`:`agent offline (last seen ${ago(OV.agent_age_s)})`+(OV.pending?` · ${OV.pending} run(s) waiting for the VM`:'');
+  const sp=OV.spend||{},cap=(OV.limits||{}).monthly_usd,used=sp.usd||0,b=$('#spend');b.className='spend'+(OV.over_cap?' over':'');b.innerHTML='';
+  b.append(el('span',{},cap!=null?`$${used.toFixed(2)} of $${(+cap).toFixed(0)} this month`:`$${used.toFixed(2)} this month · no cap`),cap!=null?el('span',{class:'meter'},el('span',{style:`width:${Math.min(100,100*used/Math.max(cap,1e-9))}%`})):null,OV.over_cap?el('b',{},'cap reached'):null);
+  b.onclick=async()=>{const v=prompt(`Monthly cap for VM compute in US$ (empty = no cap).\nSpent in ${OV.month}: $${used.toFixed(2)}`+(sp.price_per_hour?` at about $${sp.price_per_hour}/h`:'')+`.\nWhen the cap is reached, runs stop and wait and the VM switches off; they continue when you raise the cap or a new month starts.\nDisk, IP and storage (~$10/month) are not included.`,cap!=null?cap:'30');
+    if(v===null)return;try{await api('/api/limits',{monthly_usd:v.trim()});toast(v.trim()?`Cap set to $${(+v).toFixed(2)} per month`:'Cap removed');refresh();}catch(e){toast(e.message);}};
   $('#updated').textContent='updated '+new Date().toLocaleTimeString();}
 function renderList(){clearInterval(detailTimer);const m=$('#main');m.innerHTML='';
   const tb=el('div',{class:'toolbar'});const seg=el('div',{class:'seg'});

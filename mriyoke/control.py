@@ -8,6 +8,9 @@
         {"state": "queued" | "running" | "paused" | "cancelled" | "done" | "failed", "gen": <request gen applied>,
          "detail": ..., "retries": ..., "updated": ...}
   _control/agent.json                    agent heartbeat: host, time, cores, running runs
+  _control/limits.json                   spending cap, written by the dashboard: {"monthly_usd": 30 or null}
+  _control/spend/<YYYY-MM>.json          compute spend this month, written by the agent:
+        {"vm_hours": ..., "usd": ..., "price_per_hour": ..., "updated": ...}
 Run data (status.json, history.csv, images, checkpoints) lives under <session>/<run>/ (mriyoke/persist.py)."""
 import calendar, dataclasses, json, re, time
 from .config import Config
@@ -114,3 +117,12 @@ class Store:
 
     def states(self):
         return self.scan(f"{CTRL}/state/")
+
+
+def month():
+    return time.strftime("%Y-%m", time.gmtime())
+
+
+def over_cap(limits, spend):
+    cap = (limits or {}).get("monthly_usd")
+    return cap is not None and (spend or {}).get("usd", 0.0) >= float(cap)

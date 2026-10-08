@@ -6,12 +6,18 @@ Each run is `scripts/<script> results_dir=results/<session>/<run> threads=<n> <a
 persistence, so a paused, evicted or interrupted run continues from its last uploaded iteration. Pause and cancel
 stop the process at once (the iteration in progress is lost, the checkpoint of the previous one is kept).
 
-Environment: MRIYOKE_BLOB_URL (required), AGENT_POLL (s, default 20), AGENT_IDLE_MIN (default 15), AGENT_CORES."""
-import json, os, signal, socket, subprocess, sys, time, urllib.request
+Spending cap: the agent counts its own VM's running time x the current spot price (Azure Retail Prices API, +10 %
+margin) into _control/spend/<month>.json. When the month's total reaches _control/limits.json "monthly_usd" (set in
+the dashboard) it stops all runs (they wait, and continue when the cap is raised or a new month starts) and
+deallocates the VM. Azure itself offers no hard cap on pay-as-you-go subscriptions, only alerts.
+
+Environment: MRIYOKE_BLOB_URL (required), AGENT_POLL (s, default 20), AGENT_IDLE_MIN (default 15), AGENT_CORES,
+AGENT_PRICE_PER_HOUR (override the price lookup), AGENT_DEFAULT_CAP (cap written on first start if none is set, $30)."""
+import json, os, signal, socket, subprocess, sys, time, urllib.parse, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from mriyoke.persist import blob_url, container
-from mriyoke.control import CTRL, SCRIPTS, RESERVED, Store, now, runnable
+from mriyoke.control import CTRL, SCRIPTS, RESERVED, Store, month, now, over_cap, runnable
 
 POLL = float(os.environ.get("AGENT_POLL", 20))
 IDLE_MIN = float(os.environ.get("AGENT_IDLE_MIN", 15))
@@ -22,6 +28,31 @@ IMDS = "http://169.254.169.254/metadata/"
 
 def log(s):
     print(f"{time.strftime('%H:%M:%S')} {s}", flush=True)
+
+
+def imds_json(path):
+    return json.load(urllib.request.urlopen(urllib.request.Request(IMDS + path, headers={"Metadata": "true"}), timeout=5))
+
+
+def spot_price():
+    """$/h of this VM on spot (Linux), from the public Azure Retail Prices API, +10 % margin; None if unknown."""
+    if os.environ.get("AGENT_PRICE_PER_HOUR"):
+        return float(os.environ["AGENT_PRICE_PER_HOUR"])
+    try:
+        c = imds_json("instance/compute?api-version=2021-02-01")
+        size, loc = c["vmSize"], c["location"]
+        q = urllib.parse.quote(f"serviceName eq 'Virtual Machines' and armRegionName eq '{loc}' and armSkuName eq '{size}' "
+                               f"and priceType eq 'Consumption'")
+        items = json.load(urllib.request.urlopen(f"https://prices.azure.com/api/retail/prices?$filter={q}", timeout=20))["Items"]
+        spot = [i["retailPrice"] for i in items if "Spot" in i["skuName"] and "Windows" not in i["productName"]]
+        ondemand = [i["retailPrice"] for i in items if "Spot" not in i["skuName"] and "Low Priority" not in i["skuName"]
+                    and "Windows" not in i["productName"]]
+        is_spot = c.get("priority", "Spot") in ("Spot", "Low")
+        p = (spot if is_spot else ondemand) or spot or ondemand
+        return round(1.1 * max(p), 4) if p else None
+    except Exception as e:
+        log(f"price lookup failed: {e}")
+        return None
 
 
 def deallocate():
@@ -46,6 +77,22 @@ class Agent:
         self.states = self.store.states()                 # the agent is the only writer: keep them in memory
         self.idle_since = time.time()
         self.host = socket.gethostname()
+        self.price = spot_price() or 1.0                  # $/h; 1.0 (about on demand) if the lookup failed: errs on the safe side
+        self.month = month()
+        self.spend = self.store.get(f"{CTRL}/spend/{self.month}.json") or dict(vm_hours=0.0, usd=0.0)
+        self.add_cost(3 / 60)                             # boot until the agent runs, not otherwise seen
+        self.last_tick = time.time()
+        self.cap_deallocated = 0.0
+        if self.store.get(f"{CTRL}/limits.json") is None:  # never run without a cap unless the user removes it
+            self.store.put(f"{CTRL}/limits.json", dict(monthly_usd=float(os.environ.get("AGENT_DEFAULT_CAP", 30)), updated=now()))
+
+    def add_cost(self, hours):
+        if month() != self.month:                         # new month: start a new total
+            self.month, self.spend = month(), dict(vm_hours=0.0, usd=0.0)
+        self.spend["vm_hours"] = self.spend.get("vm_hours", 0.0) + hours
+        self.spend["usd"] = self.spend.get("usd", 0.0) + hours * self.price
+        self.spend.update(price_per_hour=self.price, updated=now(), month=self.month)
+        self.store.put(f"{CTRL}/spend/{self.month}.json", self.spend)
 
     def set_state(self, key, **kw):
         st = dict(self.states.get(key) or {})
@@ -92,6 +139,9 @@ class Agent:
         pr["log"].close()
         del self.procs[key]
         gen = (req or {}).get("gen", 0)
+        if pr["stopping"] == "cap":                       # waits; continues once the cap allows it
+            self.set_state(key, state="queued", detail="waiting: monthly spending cap reached")
+            return
         if pr["stopping"]:
             self.set_state(key, state="paused" if pr["stopping"] == "pause" else "cancelled", gen=gen, detail="by user")
             return
@@ -118,6 +168,11 @@ class Agent:
         log(f"exit {key}: rc={rc}, retries={retries}")
 
     def step(self):
+        t = time.time()
+        self.add_cost(min(t - self.last_tick, 3 * POLL) / 3600)
+        self.last_tick = t
+        limits = self.store.get(f"{CTRL}/limits.json")
+        capped = over_cap(limits, self.spend)
         reqs = self.store.requests()
         for key in list(self.procs):
             self.reap(key, reqs.get(key))
@@ -133,6 +188,10 @@ class Agent:
         waiting = sorted((r.get("created", ""), k) for k, r in reqs.items()
                          if k not in self.procs and runnable(r, self.states.get(k)))
         n_wait = 0
+        if capped:
+            for key in list(self.procs):
+                self.stop(key, "cap")
+            waiting = []
         for _, key in waiting:
             req = reqs[key]
             need = min(int(req.get("spec", {}).get("threads", 4)), CORES)
@@ -143,13 +202,22 @@ class Agent:
                 st = self.states.get(key) or {}
                 if st.get("state") != "queued" or st.get("gen", 0) != req.get("gen", 0):
                     self.set_state(key, state="queued", gen=req.get("gen", 0), detail="waiting for free cores")
-        busy = bool(self.procs) or n_wait > 0
+        busy = (bool(self.procs) or n_wait > 0) and not capped
         if busy:
             self.idle_since = time.time()
         idle = (time.time() - self.idle_since) / 60
         self.store.put(f"{CTRL}/agent.json", dict(host=self.host, time=now(), cores=CORES, used=self.used(),
                                                   running=sorted(self.procs), waiting=n_wait,
-                                                  idle_min=round(idle, 1), idle_limit_min=IDLE_MIN))
+                                                  idle_min=round(idle, 1), idle_limit_min=IDLE_MIN, price_per_hour=self.price,
+                                                  note="spending cap reached" if capped else None))
+        if capped and not self.procs and time.time() - self.cap_deallocated > 600:
+            self.cap_deallocated = time.time()
+            log(f"monthly spending cap reached (${self.spend['usd']:.2f} of ${limits['monthly_usd']}): deallocating the VM")
+            try:
+                deallocate()
+            except Exception as e:
+                log(f"deallocate failed: {e}")
+            return
         if not busy and IDLE_MIN > 0 and idle >= IDLE_MIN:
             log(f"idle for {idle:.0f} min: deallocating the VM")
             self.store.put(f"{CTRL}/agent.json", dict(host=self.host, time=now(), cores=CORES, used=0, running=[],
@@ -161,7 +229,8 @@ class Agent:
             time.sleep(300)
 
     def loop(self):
-        log(f"agent on {self.host}: {CORES} cores, poll {POLL} s, idle shutdown after {IDLE_MIN} min")
+        log(f"agent on {self.host}: {CORES} cores, poll {POLL} s, idle shutdown after {IDLE_MIN} min, "
+            f"${self.price}/h, ${self.spend.get('usd', 0):.2f} spent in {self.month}")
         while True:
             try:
                 self.step()
