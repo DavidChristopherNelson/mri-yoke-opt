@@ -1,6 +1,6 @@
 """Level-set topology optimization loop (NGSolve tutorial 7.6 pattern) for Plan X:
 minimise F = (C_fe + C_f + C_fixed) / N_green, the cost per good imaging voxel."""
-import csv, gzip, json, os, time
+import csv, gzip, json, os, pickle, time
 import numpy as np
 import ngsolve
 from ngsolve import CoefficientFunction
@@ -16,14 +16,27 @@ from .timing import RunClock
 
 
 class Optimizer:
-    def __init__(self, cfg: Config, log=print):
-        self.cfg, self.log = cfg, log
+    def __init__(self, cfg: Config, log=print, sink=None):
+        self.cfg, self.log, self.sink = cfg, log, sink
         os.makedirs(cfg.results_dir, exist_ok=True)
         if cfg.threads > 0:
             ngsolve.SetNumThreads(cfg.threads)
         t = time.time()
-        self.mesh = build_mesh(cfg)
-        log(f"mesh: {self.mesh.ne} elements, {self.mesh.nv} vertices ({time.time()-t:.1f}s)")
+        mesh_pkl = os.path.join(cfg.results_dir, "mesh.pkl")
+        if cfg.it_offset > 0 and os.path.exists(mesh_pkl):    # resume: the very mesh of the checkpoint (curved, pickled)
+            with open(mesh_pkl, "rb") as f:
+                self.mesh = pickle.load(f)
+            log(f"mesh: {self.mesh.ne} elements, {self.mesh.nv} vertices, from mesh.pkl")
+        else:
+            self.mesh = build_mesh(cfg)
+            with open(mesh_pkl, "wb") as f:
+                pickle.dump(self.mesh, f)
+            log(f"mesh: {self.mesh.ne} elements, {self.mesh.nv} vertices ({time.time()-t:.1f}s)")
+        with open(os.path.join(cfg.results_dir, "config.json"), "w") as f:
+            json.dump(cfg.__dict__, f, indent=1)
+        if sink:
+            sink.put_file("config.json", os.path.join(cfg.results_dir, "config.json"))
+            sink.put_file("mesh.pkl", mesh_pkl)
         self.ms = Magnetostatics(self.mesh, cfg)
         log(f"HCurl order {cfg.fe_order}: {self.ms.fes.ndof} dofs")
         self.des = Design(self.mesh, self.ms, cfg)
@@ -334,6 +347,7 @@ class Optimizer:
         self.set_widths(it0, m)
         J = self.objective(m)
         self.record(it0, m, kappa, J, time.time() - t)
+        self.save("latest", it0); self.persist(it0)
         stall = fails = 0
         stop, last_it = "iter_max", it0
         for it in range(it0 + 1, cfg.iter_max + 1):
@@ -399,7 +413,7 @@ class Optimizer:
             m, J = m_new, J_new
             self.count(m)
             self.record(it, m, kappa, J, time.time() - t); last_it = it
-            self.save("latest", it)
+            self.save("latest", it); self.persist(it)
             if stall >= cfg.dJ_rel_count:
                 self.log(f"[it {it}] relative change < {cfg.dJ_rel_tol} for {stall} steps; stopping")
                 stop = "converged"; break
@@ -410,4 +424,32 @@ class Optimizer:
         self.log(f"finished: {stop} after {last_it} iterations, {self.clock.elapsed() / 3600:.2f} h, {self.n_solves} field solves")
         self.clock.write_status(self.clock.status(last_it, m, "finished: " + stop, self.n_solves, self.n_tries))
         self.clock.append_history(last_it, m, stop, self.n_solves, self.n_tries)
+        self.persist_final()
         return self.hist
+
+    def persist(self, it):
+        """Queue this iteration's files for the blob store; the latest.json pointer goes last."""
+        s, d = self.sink, self.cfg.results_dir
+        if not s:
+            return
+        tag = f"iter_{it:04d}"
+        s.put_file(f"{tag}.png", os.path.join(d, tag + ".png"))
+        if self.cfg.blob_vtu:
+            s.put_file(f"{tag}.vtu", os.path.join(d, tag + ".vtu"))
+        s.put_bytes(f"frames/{it:04d}.json.gz", gzip.compress(json.dumps(self.frames[-1]).encode()))
+        for rel in ("history.csv", "history.png", "status.json", "run.log"):
+            s.put_file(rel, os.path.join(d, rel))
+        s.put_array(f"ckpt/{it:04d}/psi.npy", self.des.fe.psi.vec.FV().NumPy())
+        s.put_array(f"ckpt/{it:04d}/psif.npy", self.des.f.psi.vec.FV().NumPy())
+        s.put_array(f"ckpt/{it:04d}/mdir.npy", self.ms.get_m())
+        s.commit("latest.json", json.dumps(dict(it=it)).encode())
+
+    def persist_final(self):
+        s, d = self.sink, self.cfg.results_dir
+        if not s:
+            return
+        for rel in ("psi_final.npy", "psif_final.npy", "mdir_final.npy", "mask_final.npy", "final.json", "config.json",
+                    "status.json", "history.csv", "history.png", "run.log"):
+            s.put_file(rel, os.path.join(d, rel))
+        s.flush()
+        self.log(f"blob: all uploads done ({s.failures} failed)" if s.failures else "blob: all uploads done")

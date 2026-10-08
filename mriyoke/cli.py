@@ -1,10 +1,12 @@
-"""Shared entry point of scripts/run_coarse.py and run_fine.py: key=value overrides, run.log, auto-resume.
+"""Shared entry point of scripts/run_coarse.py and run_fine.py: key=value overrides, run.log, auto-resume,
+blob persistence (blob_url=... or MRIYOKE_BLOB_URL; see mriyoke/persist.py).
 
 Auto-resume (auto_resume=1 on the command line, or environment MRIYOKE_AUTO_RESUME=1, as on the cloud VM): if
 results_dir already holds a checkpoint (latest.json + psi/psif/mdir_latest.npy), the run continues from it in the
 same directory, keeping its iteration numbering, history and viewer frames; if the run there already finished
 (converged / no descent step / iter_max reached) it exits at once. A run stopped by its time budget or killed (spot
-eviction) is continued. Re-running the same command is therefore idempotent."""
+eviction) is continued. Re-running the same command is therefore idempotent. With blob storage configured and no
+local checkpoint, the checkpoint is first restored from the store, so a run can continue on a different VM."""
 import json, os, sys, time
 from .config import Config
 
@@ -26,6 +28,11 @@ def main(cfg: Config, args):
     d = cfg.results_dir
     os.makedirs(d, exist_ok=True)
     note = None
+    from .persist import sink_for
+    sink = sink_for(cfg)
+    if auto and not cfg.resume and sink and not os.path.exists(os.path.join(d, "latest.json")):
+        if sink.fetch_resume(d):                       # e.g. a new VM, or the old disk is gone
+            print(f"{d}: restored checkpoint from blob storage", flush=True)
     if auto and not cfg.resume and os.path.exists(os.path.join(d, "latest.json")):
         try:
             state = json.load(open(os.path.join(d, "status.json"))).get("state", "")
@@ -46,5 +53,8 @@ def main(cfg: Config, args):
     log(f"=== run {time.strftime('%Y-%m-%d %H:%M:%S')}  {cfg}")
     if note:
         log(note)
+    if sink:
+        sink.log = log
+        log(f"blob storage: every iteration is uploaded to {sink.c.url.split('?')[0]}/{sink.prefix}/")
     from .optimize import Optimizer
-    Optimizer(cfg, log).run()
+    Optimizer(cfg, log, sink).run()

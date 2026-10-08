@@ -56,4 +56,11 @@ for label, sel in (("iron", lambda m: m == 1), ("ferrite", lambda m: m >= 2)):
             a1 = sel(masks[n1])
             iou = [(a1 & sel(masks[n2])).sum() / max((a1 | sel(masks[n2])).sum(), 1) for n2 in names]
             wr.writerow([n1] + [f"{v:.3f}" for v in iou])
+if os.environ.get("MRIYOKE_BLOB_URL"):                     # session-level files next to the runs in blob storage
+    sys.path.insert(0, ROOT)
+    from mriyoke.persist import BlobSink
+    sink = BlobSink(os.environ["MRIYOKE_BLOB_URL"], a.session)
+    for f in ("summary.csv", "iou_iron.csv", "iou_ferrite.csv", "status.txt"):
+        sink.put_file(f, os.path.join(sdir, f))
+    sink.flush()
 print(open(os.path.join(sdir, "summary.csv")).read())

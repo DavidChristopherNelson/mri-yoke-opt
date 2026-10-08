@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Runs on the VM (systemd unit mriyoke-job). Executes $JOB from ~/job.env with auto-resume, so after a spot
 # eviction + restart every run continues from its last checkpoint and finished runs are skipped.
-# When the job is done (or failed 3 times) it tags the VM mriyoke=done|failed and, after GRACE_MIN minutes (time for
-# `azure.sh watch` / `azure.sh pull` to copy the results), deallocates the VM itself so compute billing stops.
+# Every iteration of every run is uploaded to blob storage as it happens (MRIYOKE_BLOB_URL, mriyoke/persist.py), so
+# when the job is done (or failed 3 times) the VM tags itself mriyoke=done|failed, uploads its job log and
+# deallocates itself at once: compute billing stops, results are already in storage.
 set -u
 cd "$HOME/mri-yoke-opt"
 [ -f "$HOME/job.env" ] || { echo "no ~/job.env: nothing to run"; exit 0; }
 [ -f "$HOME/job.done" ] && { echo "job already done: $(cat "$HOME/job.done")"; exit 0; }
 # shellcheck disable=SC1091
-source "$HOME/job.env"                      # JOB="scripts/multistart.py ..."  GRACE_MIN=60
-export MRIYOKE_AUTO_RESUME=1 PYTHONUNBUFFERED=1
+source "$HOME/job.env"                      # JOB="scripts/multistart.py ..."  MRIYOKE_BLOB_URL=https://...
+export MRIYOKE_AUTO_RESUME=1 PYTHONUNBUFFERED=1 MRIYOKE_BLOB_URL
 
 imds() { curl -s -H Metadata:true "http://169.254.169.254/metadata/$1"; }
 arm() {                                     # arm METHOD URL-SUFFIX [JSON]  (managed identity of the VM)
@@ -25,9 +26,9 @@ arm() {                                     # arm METHOD URL-SUFFIX [JSON]  (man
 finish() {                                  # finish done|failed
   echo "$(date -u +%FT%TZ) job $1" | tee -a "$HOME/job.log"
   [ "$1" = done ] && date -u +%FT%TZ > "$HOME/job.done"
+  .venv/bin/python -m mriyoke.persist put "$HOME/job.log" "_jobs/$(hostname)/job-$(date -u +%Y%m%dT%H%M%SZ).log" || true
   arm PATCH "?api-version=2024-07-01" "{\"tags\":{\"mriyoke\":\"$1\"}}" > /dev/null
-  echo "deallocating in ${GRACE_MIN:-60} min" | tee -a "$HOME/job.log"
-  sleep $(( ${GRACE_MIN:-60} * 60 ))
+  echo "deallocating" | tee -a "$HOME/job.log"
   arm POST "/deallocate?api-version=2024-07-01" > /dev/null
 }
 
